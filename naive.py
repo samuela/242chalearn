@@ -40,7 +40,7 @@ def gatherXY(fn):
     num_frames = data['num_frames']
     labels = data['frame_labels']
 
-    # Select indices at uniformly at random.
+    # Select indices uniformly at random.
     # all_ixs = xrange(window_size, num_frames - window_size)
 
     # Select only those indices corresponding to gestures.
@@ -137,3 +137,4 @@ print '... Training Random Forest'
 rf_clf, rf_score, rf_cm = testClassifier(RandomForestClassifier(n_estimators=250, n_jobs=-1))
 print rf_score
 showConfusionMatrix(rf_cm, 'Random Forest', outfile='rf_confusion_matrix.png')
+
