@@ -1,5 +1,6 @@
 import scipy.io
 import numpy as np
+import random
 
 allLabels = ['*NONE*',
              'vattene',
@@ -62,12 +63,12 @@ def loadFile(fn):
 
     world_positions = np.zeros((num_frames, m_wp, n_wp))
     world_rotations = np.zeros((num_frames, m_wr, n_wr))
-    
+
     for i in xrange(num_frames):
         world_positions[i,:,:] = wp(i)
         world_rotations[i,:,:] = wr(i)
-    
-    # Convert to dense format. Not all frames are associated with a label. 
+
+    # Convert to dense format. Not all frames are associated with a label.
     # Otherwise unlabeled frames are assigned the 0 label.
     label_pos = mat['Video']['Labels'][0][0][0]
     frame_labels = np.zeros((num_frames,))
@@ -128,4 +129,3 @@ def gatherAllXY(fn, window_size):
         Y.append(labels[ix])
 
     return X, Y
-
