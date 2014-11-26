@@ -1,6 +1,6 @@
 from glob import glob
 import random
-from gatherData import gatherXY
+from gatherData import gatherAllXY, gatherRandomXY
 import numpy as np
 from scipy import stats
 
