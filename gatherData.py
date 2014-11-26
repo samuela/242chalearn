@@ -87,7 +87,7 @@ def loadFile(fn):
             'num_frames': num_frames,
             'frame_rate': frame_rate}
 
-def gatherXY(fn, window_size, samples_per_file):
+def gatherRandomXY(fn, window_size, samples_per_file):
     data = loadFile(fn)
     pos = data['world_position']
     rot = data['world_rotation']
@@ -102,6 +102,27 @@ def gatherXY(fn, window_size, samples_per_file):
 
     X, Y = [], []
     for ix in random.sample(all_ixs, min(samples_per_file, len(all_ixs))):
+        X.append(np.hstack((pos[ix - window_size:ix + window_size].ravel(),
+                            rot[ix - window_size:ix + window_size].ravel())))
+        Y.append(labels[ix])
+
+    return X, Y
+
+def gatherAllXY(fn, window_size):
+    data = loadFile(fn)
+    pos = data['world_position']
+    rot = data['world_rotation']
+    num_frames = data['num_frames']
+    labels = data['frame_labels']
+
+    # Select indices uniformly at random.
+    # all_ixs = xrange(window_size, num_frames - window_size)
+
+    # Select only those indices corresponding to gestures.
+    all_ixs = window_size + np.where(labels[window_size:num_frames - window_size] > 0)[0]
+
+    X, Y = [], []
+    for ix in all_ixs:
         X.append(np.hstack((pos[ix - window_size:ix + window_size].ravel(),
                             rot[ix - window_size:ix + window_size].ravel())))
         Y.append(labels[ix])

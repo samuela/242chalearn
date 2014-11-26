@@ -1,6 +1,6 @@
 from glob import glob
 import random
-from gatherData import gatherXY
+from gatherData import gatherRandomXY
 import numpy as np
 
 from sklearn import svm
@@ -57,12 +57,12 @@ print '... Gathering data'
 #                       train_data_files)
 
 pool = mp.Pool()
-train_data = pool.map(lambda fn: gatherXY(fn, window_size, samples_per_file), train_data_files)
+train_data = pool.map(lambda fn: gatherRandomXY(fn, window_size, samples_per_file), train_data_files)
 Xtrain = np.vstack([x for (xs, ys) in train_data for x in xs])
 Ytrain = np.vstack([y for (xs, ys) in train_data for y in ys])
 del train_data
 
-validation_data = pool.map(lambda fn: gatherXY(fn, window_size, samples_per_file), validation_data_files)
+validation_data = pool.map(lambda fn: gatheraRandomXY(fn, window_size, samples_per_file), validation_data_files)
 Xvalid = np.vstack([x for (xs, ys) in validation_data for x in xs])
 Yvalid = np.vstack([y for (xs, ys) in validation_data for y in ys])
 del validation_data
