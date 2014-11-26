@@ -21,14 +21,14 @@ def predict(clf, fn):
 def smooth(pred):
     frame_rate = 20
     smoothed = np.zeros(pred.shape)
-    for i in range(len(shape)):
+    for i in range(smoothed.size):
         neighbors = np.array([pred(x) for x in range(min(i-frame_rate/2, 0), max(i+frame_rate/2,0))])
         smoothed[i] = stats.mode(neighbors)[0][0]
     return smoothed
 
 
-train_num_files = 200
-samples_per_file = 250
+train_num_files = 20
+samples_per_file = 20
 train_file_pattern = '/users/skainswo/data/skainswo/chalearn/train/Sample*_data.mat'
 all_train_files = glob(train_file_pattern)
 test_file = all_train_files[0]
@@ -57,8 +57,9 @@ print Xtrain.shape, len(Ytrain)
 
 def trainAndPredict(clf, fn):
     clf = clf.fit(Xtrain, Ytrain)
+    print "done training"
     pred = predict(clf,fn)
     return pred
 
 print 'training and predicting'
-print trainAndPredict(RandomForestClassifier(n_estimators=250, n_jobs=3), test_file)
+print trainAndPredict(RandomForestClassifier(n_estimators=250, n_jobs=-1), test_file)
