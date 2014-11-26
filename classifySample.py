@@ -50,7 +50,7 @@ def _gatherFile(fn):
 pool = mp.Pool()
 train_data = pool.map(_gatherFile, train_data_files)
 Xtrain = np.vstack([x for (xs, ys) in train_data for x in xs])
-Ytrain = np.vstack([y for (xs, ys) in train_data for y in ys])
+Ytrain = np.array([y for (xs, ys) in train_data for y in ys])
 del train_data
 
 print Xtrain.shape, len(Ytrain)
