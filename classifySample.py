@@ -61,4 +61,4 @@ def trainAndPredict(clf, fn):
     return pred
 
 print 'training and predicting'
-print trainAndPredict(RandomForestClassifier(n_estimators=250, n_jobs=-1), test_file)
+print trainAndPredict(RandomForestClassifier(n_estimators=250, n_jobs=3), test_file)
