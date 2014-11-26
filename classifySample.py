@@ -34,9 +34,9 @@ all_train_files = glob(train_file_pattern)
 test_file = all_train_files[0]
 train_data_files = random.sample(all_train_files[1:], train_num_files)
 
-validation_num_files = 200
-validation_file_pattern = '/users/skainswo/data/skainswo/chalearn/validation/Sample*_data.mat'
-validation_data_files = random.sample(glob(validation_file_pattern), validation_num_files)
+# validation_num_files = 200
+# validation_file_pattern = '/users/skainswo/data/skainswo/chalearn/validation/Sample*_data.mat'
+# validation_data_files = random.sample(glob(validation_file_pattern), validation_num_files)
 
 
 # One-sided length of window. Total window length will be twice this value.
