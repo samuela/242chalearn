@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import multiprocessing as mp
 
 def predict(clf, fn):
-    X,Y = gatherAllXY(fn, window_size)
+    X, Y = gatherAllXY(fn, window_size)
     prediction = clf.predict(X)
     return smooth(prediction)
 
@@ -44,11 +44,10 @@ window_size = 15
 
 print '... Gathering data'
 
-pool = mp.Pool()
-
 def _gatherFile(fn):
     return gatherRandomXY(fn, window_size, samples_per_file)
 
+pool = mp.Pool()
 train_data = pool.map(_gatherFile, train_data_files)
 Xtrain = np.vstack([x for (xs, ys) in train_data for x in xs])
 Ytrain = np.vstack([y for (xs, ys) in train_data for y in ys])
