@@ -129,3 +129,14 @@ def gatherAllXY(fn, window_size):
         Y.append(labels[ix])
 
     return X, Y
+
+def gatherAllXYNoWindow(fn):
+    data = loadFile(fn)
+    pos = data['world_position']
+    rot = data['world_rotation']
+    labels = data['frame_labels']
+
+    ps, rs = pos.shape, rot.shape
+    
+    return np.hstack((pos.reshape(ps[0], ps[1] * ps[2]),
+                      rot.reshape(rs[0], rs[1] * rs[2]))), labels
