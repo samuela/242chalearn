@@ -26,26 +26,26 @@ allLabels = ['*NONE*',
 
 numForLabel = {l: i for (i, l) in enumerate(allLabels)}
 
-jointTypes = ['HipCenter'
-'Spine'
-'ShoulderCenter'
-'Head'
-'ShoulderLeft'
-'ElbowLeft'
-'WristLeft'
-'HandLeft'
-'ShoulderRight'
-'ElbowRight'
-'WristRight'
-'HandRight'
-'HipLeft'
-'KneeLeft'
-'AnkleLeft'
-'FootLeft'
-'HipRight'
-'KneeRight'
-'AnkleRight'
-'FootRight']
+jointTypes = ['HipCenter',
+             'Spine',
+             'ShoulderCenter',
+             'Head',
+             'ShoulderLeft',
+             'ElbowLeft',
+             'WristLeft',
+             'HandLeft',
+             'ShoulderRight',
+             'ElbowRight',
+             'WristRight',
+             'HandRight',
+             'HipLeft',
+             'KneeLeft',
+             'AnkleLeft',
+             'FootLeft',
+             'HipRight',
+             'KneeRight',
+             'AnkleRight',
+             'FootRight']
 
 numForJoint = {l: i for (i, l) in enumerate(jointTypes)}
 
