@@ -116,9 +116,6 @@ def gatherAllXY(fn, window_size):
     num_frames = data['num_frames']
     labels = data['frame_labels']
 
-    # Select indices uniformly at random.
-    # all_ixs = xrange(window_size, num_frames - window_size)
-
     # Select only those indices corresponding to gestures.
     all_ixs = window_size + np.where(labels[window_size:num_frames - window_size] > 0)[0]
 
