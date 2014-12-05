@@ -1,6 +1,6 @@
 from glob import glob
 import random
-from gatherData import gatherRandomXY
+from gatherData import gatherRandomXY, TRAIN_FILE_PATTERN, VALID_FILE_PATTERN
 import numpy as np
 
 from sklearn import svm
@@ -16,13 +16,11 @@ import multiprocessing as mp
 
 train_num_files = 200
 samples_per_file = 250
-train_file_pattern = '/users/skainswo/data/skainswo/chalearn/train/Sample*_data.mat'
-train_data_files = random.sample(glob(train_file_pattern), train_num_files)
+train_data_files = random.sample(glob(TRAIN_FILE_PATTERN), train_num_files)
 
 validation_num_files = 200
 # validation_samples_per_file = 250
-validation_file_pattern = '/users/skainswo/data/skainswo/chalearn/validation/Sample*_data.mat'
-validation_data_files = random.sample(glob(validation_file_pattern), validation_num_files)
+validation_data_files = random.sample(glob(VALID_FILE_PATTERN), validation_num_files)
 
 
 # One-sided length of window. Total window length will be twice this value.
@@ -116,4 +114,3 @@ print '... Training Random Forest'
 rf_clf, rf_score, rf_cm = testClassifier(RandomForestClassifier(n_estimators=250, n_jobs=-1))
 print rf_score
 showConfusionMatrix(rf_cm, 'Random Forest', outfile='rf_confusion_matrix.png')
-

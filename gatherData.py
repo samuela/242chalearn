@@ -47,6 +47,9 @@ jointTypes = ['HipCenter',
              'AnkleRight',
              'FootRight']
 
+TRAIN_FILE_PATTERN = '/users/skainswo/data/skainswo/chalearn/train/Sample*_data.mat'
+VALID_FILE_PATTERN = '/users/skainswo/data/skainswo/chalearn/validation/Sample*_data.mat'
+
 numForJoint = {l: i for (i, l) in enumerate(jointTypes)}
 
 def loadFile(fn):
