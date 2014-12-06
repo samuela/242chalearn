@@ -7,8 +7,8 @@ function [ model, x0, P0, ll_iter ] = em_slds(...
 
   num_states = numel(model_init);
   
-  % init stuff  
-  done = false;  
+  % init stuff
+  done = false;
   iters = 0;
   ll_old = -Inf;
   ll_iter = [];
@@ -50,7 +50,7 @@ function [ model, x0, P0, ll_iter ] = em_slds(...
   
   % Main Loop
   while ~done
-    iters = iters+1;
+    iters = iters + 1;
     fprintf('\nIter #%d:', iters);
     
     %% E-step %%%%%%%%%%%%%
@@ -121,7 +121,7 @@ function [ model, x0, P0, ll_iter ] = em_slds(...
     % compute free energy
     ll = compute_slds_bound( num_states, model, data, x0, P0, Eedge, Exx, Xs, Ps );
     ll_iter = [ ll_iter; ll ];
-    if iters>1
+    if iters > 1
       diff = (ll - ll_old)/abs(ll);
       fprintf('\n(Iter #%d) LL: %0.3f, D: %0.3f', iters, ll, diff);
       if ( ( diff < conv_tol ) || (iters >= max_iters) )
@@ -187,14 +187,11 @@ function [ model, x0, P0, ll_iter ] = em_slds(...
       model{k}.Q = Q_new;
       model{k}.C = C_new;
       model{k}.R = R_new;
-    
     end
-    
 
   end
   
-  for(k=1:numel(model))
+  for k=1:numel(model)
      model{k}.Q = (model{k}.Q + model{k}.Q')/2;
   end
-  
 end

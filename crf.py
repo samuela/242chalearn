@@ -43,3 +43,11 @@ print len(train_data)
 
 # plt.plt(ssvm.loss_curve_)
 # plt.show()
+
+print '... Building model'
+model = ChainCRF()
+Xs, Ys = zip(*train_data)
+
+
+# plt.plt(ssvm.loss_curve_)
+# plt.show()
