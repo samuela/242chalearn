@@ -1,0 +1,5 @@
+/Users/samuelainsworth/Development/242chalearn/HCRF2.0b/apps/matHCRF/hCRF/cgdescent/CMakeFiles/cgDescent.dir
+/Users/samuelainsworth/Development/242chalearn/HCRF2.0b/apps/matHCRF/hCRF/CMakeFiles/hCRF.dir
+/Users/samuelainsworth/Development/242chalearn/HCRF2.0b/apps/matHCRF/hCRF/lbfgs/CMakeFiles/lbfgs.dir
+/Users/samuelainsworth/Development/242chalearn/HCRF2.0b/apps/matHCRF/CMakeFiles/matHCRF.dir
+/Users/samuelainsworth/Development/242chalearn/HCRF2.0b/apps/matHCRF/hCRF/uncOptim/CMakeFiles/uncoptim.dir
