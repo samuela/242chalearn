@@ -2,15 +2,33 @@ clear variables;
 num_states = 21;
 
     %% Get data
-    inds = [2:3];
+    fprintf('...Gathering data')
+    inds = [1:3];
+    inds(1) = [];
     % split into train/test
-    [labels_train, data_train] = load_data('./data', inds);
-    [labels_test, ~] = load_data('./data', 1);
+    [labels_train, data_train, ~] = load_data('./data', inds);
+    [labels_test, ~, seqs_test] = load_data('./data', 1);
     labels_test = labels_test{1};
-    fprintf('done getting data')
+    seqs_test = seqs_test{1};
     
+    %% Transition Probs
+    % Compute ML estimates of the transition probabilities in the training set.
+    % Compute using the data in seq_train.
+    fprintf('...Computing transition probabilities');
+    trans_est = zeros(num_states);
+    for kk=1:numel(labels_train)
+        labels = labels_train{kk}; 
+        for ii=1:num_states
+            states = labels(find(labels(1:end-1)==ii)+1);
+            for jj=1:num_states
+                trans_est(ii,jj)=trans_est(ii,jj)+sum(states==jj);
+            end
+        end
+    end
+    trans_est = trans_est./repmat(sum(trans_est,2),1,num_states);
     
     %% Run EM learning
+    fprintf('...Starting EM');
     
     conv_tol = 1e-4;
     max_iters = 100;
@@ -19,8 +37,9 @@ num_states = 21;
     ll_iter = cell([num_states,1]);
     
     parfor kk = 1:num_states
-        data_train{kk} = cellfun(@(x)x',data_train{kk},'UniformOutput',false);
-        [ model_est{kk}, ll_iter{kk} ] = em_lds_general(model_init{kk}, x0_init, P0_init, data_train{kk}, max_iters, conv_tol);
+        transposed_data = cellfun(@(x)x',data_train{kk},'UniformOutput',false);
+        [ model_est{kk}, ll_iter{kk} ] = em_lds_general(model_init{kk}, x0_init, P0_init, transposed_data, max_iters, conv_tol);
+        fprintf('trained %d',kk);
     end
 
     fig = figure(); hold on
@@ -30,8 +49,11 @@ num_states = 21;
         axis([1 numel(ll_iter{kk}) ll_iter{kk}(1)-10 ll_iter{kk}(end)+1000])
     end
     saveas(fig, 'logLike.pdf');
+    
+    %% Particle filtering
+    fprintf('...Start particle filtering');
+    num_particles = 100;
+    [X_est, Z_est] = particle_filter_jake(num_particles, model_est, seqs_test, trans_est);
 
     
-    %xlabel('Iteration #');
-    %ylabel('Log-Likelihood');
-    %title(sprintf('Training Log-Likelihood SEQ:(%d,%d)',inds(1),inds(2)));
+    

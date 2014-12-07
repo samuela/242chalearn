@@ -1,4 +1,4 @@
-function [labels, data] = load_data(dname, I_seq)
+function [labels, data, seqs] = load_data(dname, I_seq)
 % Load the data
 %
 % Inputs:
@@ -16,7 +16,11 @@ function [labels, data] = load_data(dname, I_seq)
 %         of a gesture. data{k}{i} is a 140 x T_{k,i} sequence of
 %         poses for the k-th gesture and the i-th sequence. T_{k,i} is the
 %         length of this particular sequence.
-%
+%   seqs: struct containing joint data for all sequences. seqs{i}
+%         represents the i-th sequence. seqs{i} is a numel(joints_to_use) by T array
+%         of values for the joints used in each sequence where T is the
+%         length of the training sequence.
+
 joints_to_use = 5:12;%1:20; 5:12
 
 all_labels = char('*NONE*', 'vattene', 'vieniqui', 'perfetto', 'furbo', 'cheduepalle', 'chevuoi', 'daccordo', 'seipazzo', ...
@@ -28,6 +32,7 @@ all_labels = char('*NONE*', 'vattene', 'vieniqui', 'perfetto', 'furbo', 'cheduep
 sequences = char('00710','00050','00279');
 data = cell([num_states, 1]);
 labels = cell([numel(I_seq), 1]);
+seqs = cell([numel(I_seq), 1]);
 
 for ind=1:numel(I_seq)
     s_i = I_seq(ind);
@@ -39,6 +44,8 @@ for ind=1:numel(I_seq)
     
     none_index = 1;
     labels{ind} = zeros(1,Video.Labels(numel(Video.Labels)).End);
+    seqs{ind} = zeros(7*numel(joints_to_use),Video.Labels(numel(Video.Labels)).End);
+    
     %go through each label in order of occurence
     for i=1:numel(Video.Labels)
        info = Video.Labels(i);
@@ -55,6 +62,7 @@ for ind=1:numel(I_seq)
            positions = reshape(positions, 1, numel(positions));
            rotations = reshape(rotations, 1, numel(rotations));
            data{k}{num_seq_k+1}(:,end+1) = [positions,rotations];
+           seqs{ind}(:, j) = [positions,rotations];
        end
        labels{ind}(info.Begin:info.End) = k;
        %fill in data{1}{num_seq+1}, the NONE sequence
@@ -70,11 +78,12 @@ for ind=1:numel(I_seq)
                positions = reshape(positions, 1, numel(positions));
                rotations = reshape(rotations, 1, numel(rotations));
                data{1}{num_seq_1+1}(:,end+1) = [positions,rotations];
+               seqs{ind}(:, j) = [positions,rotations];
            end
            labels{ind}(none_index:info.Begin-1) = 1;
        end
        none_index = info.End+1;
     end
-    
+  
 end
 end
