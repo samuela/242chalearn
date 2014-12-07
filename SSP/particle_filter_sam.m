@@ -1,4 +1,4 @@
-function [Xpost, Zpost] = particle_filter(num_particles, model, data, pi)
+function [Xpost, Zpost] = particle_filter_sam(num_particles, model, data, pi)
 % Inputs:
 %    num_particles: number of particles to use
 %    model: a cell array containing structs with A, C, Q, R for each object category.
@@ -40,18 +40,17 @@ function [Xpost, Zpost] = particle_filter(num_particles, model, data, pi)
 %           mvnpdf(data(:,t)', ...
 %                                  (model{k}.C * X(:,Z == k))', ...
 %                                  model{k}.R + 0.1 * eye(D));
-        w(Z == k) = 0.9 * mvnpdf(data(:,t)', ...
+        w(Z == k) = mvnpdf(data(:,t)', ...
                                  (model{k}.C * X(:,Z == k))', ...
-                                 model{k}.R + 0.1 * eye(D));
+                                 model{k}.R);
       end
     end
-    w = w + 0.1 * mvnpdf(data(:,t), zeros(D, 1), 5 * eye(D));
     w = w / sum(w);
     
     % Calculate posterior mean and Z_t distribution
     Xpost(:,t) = X * w;
-    poop = [(Z == 1) * w; (Z == 2) * w; (Z == 3) * w];
-    Zpost(:,t) = poop / sum(poop);
+    temp = [(Z == 1) * w; (Z == 2) * w; (Z == 3) * w];
+    Zpost(:,t) = temp / sum(temp);
     
     % Resample
     ix = randsample(1:num_particles, num_particles, true, w);
@@ -79,7 +78,7 @@ function [Xpost, Zpost] = particle_filter(num_particles, model, data, pi)
         eig_tol = 0.00001;
         cov = model{k}.Q;
         [V, eig_diag] = eig(cov);
-        eig_diag = sum(eig_diag);
+        eig_diag = sum(eig_diag); %collapse it from a diagonal matrix to a vector
         if any(eig_diag <= eig_tol)
           cov = V * diag(max(eig_diag, eig_tol)) / V;
         end
