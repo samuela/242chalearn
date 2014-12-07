@@ -54,6 +54,7 @@ num_states = 21;
     fprintf('...Start particle filtering');
     num_particles = 100;
     [X_est, Z_est] = particle_filter_jake(num_particles, model_est, seqs_test, trans_est);
+    %can also try particle_filter_sam, gets the same error
 
     
     
