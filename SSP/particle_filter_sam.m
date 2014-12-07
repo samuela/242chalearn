@@ -28,9 +28,9 @@ function [Xpost, Zpost] = particle_filter_sam(num_particles, model, data, pi)
     
     % slow way
 %     for i=1:num_particles
-%       w(i) = 0.9 * mvnpdf(data(:,t), model{Z(i)}.C * X(:,i), ...
-%                           model{Z(i)}.R + 0.1 * eye(D));
+%       w(i) = mvnpdf(data(:,t), model{Z(i)}.C * X(:,i), model{Z(i)}.R);
 %     end
+%     w = w/sum(w);
 
     % fast way
     for k=1:num_states
@@ -40,9 +40,27 @@ function [Xpost, Zpost] = particle_filter_sam(num_particles, model, data, pi)
 %           mvnpdf(data(:,t)', ...
 %                                  (model{k}.C * X(:,Z == k))', ...
 %                                  model{k}.R + 0.1 * eye(D));
+        fprintf('state %d\n',k);
+        cov_mat = model{k}.R;
+        cov_mat = (cov_mat + cov_mat')/2; %its very close to symmetric, but not exactly.
+        eig(cov_mat)
+        if ~all(eig(cov_mat) > 0)
+                [V, d] = eig(cov_mat);
+                d1 = sum(d, 2);
+                d1 = max(d1, .001);
+                cov_mat = V * diag(d1) / V;
+        end
+        eig(cov_mat)
+%        eig_tol = 0.00001;
+%        [V, eig_diag] = eig(cov_mat);
+%        eig_diag = sum(eig_diag); %collapse it from a diagonal matrix to a vector
+%        if any(eig_diag <= eig_tol)
+%          cov_mat = V * diag(max(eig_diag, eig_tol)) / V;
+%        end
+%        eig(cov_mat)
         w(Z == k) = mvnpdf(data(:,t)', ...
                                  (model{k}.C * X(:,Z == k))', ...
-                                 model{k}.R);
+                                 cov_mat);
       end
     end
     w = w / sum(w);
@@ -76,14 +94,14 @@ function [Xpost, Zpost] = particle_filter_sam(num_particles, model, data, pi)
     for k=1:num_states
       if sum(Z == k) > 0
         eig_tol = 0.00001;
-        cov = model{k}.Q;
-        [V, eig_diag] = eig(cov);
+        cov_mat = model{k}.Q;
+        [V, eig_diag] = eig(cov_mat);
         eig_diag = sum(eig_diag); %collapse it from a diagonal matrix to a vector
         if any(eig_diag <= eig_tol)
-          cov = V * diag(max(eig_diag, eig_tol)) / V;
+          cov_mat = V * diag(max(eig_diag, eig_tol)) / V;
         end
         
-        newX(:,Z == k) = mvnrnd((model{k}.A * X(:,Z == k))', cov, sum(Z == k))';
+        newX(:,Z == k) = mvnrnd((model{k}.A * X(:,Z == k))', cov_mat, sum(Z == k))';
       end
     end
     X = newX;

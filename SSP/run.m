@@ -2,7 +2,7 @@ clear variables;
 num_states = 21;
 
     %% Get data
-    fprintf('...Gathering data')
+    fprintf('...Gathering data\n')
     inds = [1:3];
     inds(1) = [];
     % split into train/test
@@ -14,7 +14,7 @@ num_states = 21;
     %% Transition Probs
     % Compute ML estimates of the transition probabilities in the training set.
     % Compute using the data in seq_train.
-    fprintf('...Computing transition probabilities');
+    fprintf('...Computing transition probabilities\n');
     trans_est = zeros(num_states);
     for kk=1:numel(labels_train)
         labels = labels_train{kk}; 
@@ -28,7 +28,7 @@ num_states = 21;
     trans_est = trans_est./repmat(sum(trans_est,2),1,num_states);
     
     %% Run EM learning
-    fprintf('...Starting EM');
+    fprintf('...Starting EM\n');
     
     conv_tol = 1e-4;
     max_iters = 100;
@@ -51,7 +51,7 @@ num_states = 21;
     saveas(fig, 'logLike.pdf');
     
     %% Particle filtering
-    fprintf('...Start particle filtering');
+    fprintf('...Start particle filtering\n');
     num_particles = 100;
     [X_est, Z_est] = particle_filter_sam(num_particles, model_est, seqs_test, trans_est);
     %can also try particle_filter_sam, gets the same error
