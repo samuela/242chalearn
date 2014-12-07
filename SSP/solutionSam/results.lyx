@@ -1,0 +1,1068 @@
+#LyX 2.1 created this file. For more info see http://www.lyx.org/
+\lyxformat 474
+\begin_document
+\begin_header
+\textclass article
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_math auto
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 3cm
+\topmargin 3cm
+\rightmargin 3cm
+\bottommargin 3cm
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+CS 242 HW 3
+\end_layout
+
+\begin_layout Author
+Samuel Ainsworth
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+Worked with Jake Soloff and Michael Scheer
+\end_layout
+
+\begin_layout Part*
+Problem 1
+\end_layout
+
+\begin_layout Section*
+Part (a)
+\end_layout
+
+\begin_layout Standard
+See Figure 1.
+ We run the Kalman filter on the given 
+\begin_inset Quotes eld
+\end_inset
+
+track
+\begin_inset Quotes erd
+\end_inset
+
+ data.
+ 
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename lds/q1a.png
+	lyxscale 10
+	width 100text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+The true position in red, the noisy measurements in blue, and Kalman filter
+ posterior distributions in black.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section*
+Part (b)
+\end_layout
+
+\begin_layout Standard
+See Figure 2.
+ Instead of using the correct model parameters, we assume that the data
+ was generated from a constant-position model.
+ We estimate that 
+\begin_inset Formula $\sigma_{y}^{2}=20$
+\end_inset
+
+ and consider both 
+\begin_inset Formula $\sigma_{x}^{2}=0.01/3$
+\end_inset
+
+ and 
+\begin_inset Formula $\sigma_{x}^{2}=10$
+\end_inset
+
+.
+ For each of these two parameter choices, we run the Kalman filter on the
+ 
+\begin_inset Quotes eld
+\end_inset
+
+track
+\begin_inset Quotes erd
+\end_inset
+
+ data.
+\end_layout
+
+\begin_layout Standard
+As we can see in Figure 2, selecting 
+\begin_inset Formula $\sigma_{x}^{2}$
+\end_inset
+
+ too small results in completely inaccurate estimates.
+ As the plot on the left shows, the Kalman filtering estimates fail capture
+ the variation in position since such variations are consider very unlikely
+ when 
+\begin_inset Formula $\sigma_{x}^{2}=0.01/3$
+\end_inset
+
+.
+ When 
+\begin_inset Formula $\sigma_{x}^{2}=10$
+\end_inset
+
+, we can make up for our incorrect constant-position assumption by accepting
+ much more variation in the noise.
+ Although the Kalman filtering posterior distributions roughly match the
+ 
+\begin_inset Quotes eld
+\end_inset
+
+track
+\begin_inset Quotes erd
+\end_inset
+
+ data, they do so with much more variance than the correct filtering results
+ from part (a).
+ 
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename lds/q1b1.png
+	lyxscale 25
+	width 50text%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename lds/q1b2.png
+	lyxscale 25
+	width 50text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Kalman filtering with 
+\begin_inset Formula $\sigma_{x}^{2}=0.01/3$
+\end_inset
+
+ on the left and with 
+\begin_inset Formula $\sigma_{x}^{2}=10$
+\end_inset
+
+ on the right.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section*
+Part (c)
+\end_layout
+
+\begin_layout Standard
+See attached code.
+\end_layout
+
+\begin_layout Section*
+Part (d)
+\end_layout
+
+\begin_layout Standard
+See Figure 3.
+ We can see that the particle filtering estimates are just as accurate if
+ not more accurate than the Kalman filtering estimates.
+ 
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename lds/q1d.png
+	lyxscale 25
+	width 50text%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename lds/q1e.png
+	lyxscale 25
+	width 50text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+(left) Kalman filter estimates in black along with 3 particle filtering
+ estimates in magenta.
+ (right) Three particle filtering estimates with just 20 particles.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section*
+Part (e)
+\end_layout
+
+\begin_layout Standard
+See Figure 3.
+ Although using only 20 particles results in more variance in the posterior
+ estimates, the particle filtering estimates are surprisingly robust to
+ the number of particles in this case.
+ However, this is at least in part due to the fact that all of our posterior
+ distributions are 1-dimensional and unimodal.
+\end_layout
+
+\begin_layout Section*
+Part (f)
+\end_layout
+
+\begin_layout Standard
+See Figure 4.
+ With the corrupted 
+\begin_inset Quotes eld
+\end_inset
+
+track
+\begin_inset Quotes erd
+\end_inset
+
+ data, the strengths of particle filtering become clear.
+ In the presence of noise, the emission distribution is no longer Gaussian
+ and as a result, the Kalman filter is easily thrown off track.
+ However, the particle filter is able to model this non-Gaussian distribution
+ with no trouble at all and therefore performs much, much better than the
+ Kalman filter model.
+ 
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename lds/q1f_100.png
+	lyxscale 25
+	width 100text%
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Kalman and particle filtering position estimates for the noisy data.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Part*
+Problem 2
+\end_layout
+
+\begin_layout Section*
+Part (a)
+\end_layout
+
+\begin_layout Standard
+See Figure 5.
+ The Kalman smoother estimates are clearly much more accurate and much smoother
+ than the corresponding Kalman filtering estimates.
+ This makes sense since the smoothing estimates are conditioned on more
+ observations, which should clearly result in more accurate posterior distributi
+ons.
+ Partly evident of this, we see that the smoothed posterior distributions
+ have smaller variance than the same filtered posteriors and have no more
+ bias than the filtered ones.
+ 
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename lds/q2a.png
+	lyxscale 25
+	width 100text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Kalman filtering estimates shown in black and Kalman smoothing estimates
+ shown in magenta.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section*
+Part (b)
+\end_layout
+
+\begin_layout Standard
+See attached code for implementation.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{eqnarray*}
+\log p(y) & = & \log p(y_{1})+\sum_{t=1}^{T-1}\log p(y_{t+1}|y_{1},\dots,y_{t})\\
+ & = & \log\int_{\mathcal{X}_{1}}p(y_{1}|x_{1})p(x_{1})dx_{1}+\sum_{t=1}^{T-1}\log\int_{\mathcal{X}_{t}}p(y_{t+1}|x_{t})p(x_{t}|y_{1},\dots,y_{t})dx_{t}\\
+ & = & \log\int_{\mathcal{X}_{1}}\mathcal{N}\left(y_{1}|Cx_{1},R\right)\mathcal{N}\left(x_{1}|0,I_{d}\right)dx_{1}\\
+ & + & \sum_{t=1}^{T-1}\log\int_{\mathcal{X}_{t}}\left(\int_{\mathcal{X}_{t+1}}p(y_{t+1}|x_{t+1})p(x_{t+1}|x_{t})dx_{t+1}\right)p(x_{t}|y_{1},\dots,y_{t})dx_{t}\\
+ & = & \log\mathcal{N}\left(y_{1}|Cx_{1},CC^{T}+R\right)+\sum_{t=1}^{T-1}\log\int_{\mathcal{X}_{t}}\mathcal{N}\left(y_{t+1}|CAx_{t},CQC^{T}+R\right)\mathcal{N}\left(x_{t}|\mu_{t|t},\Sigma_{t|t}\right)dx_{t}\\
+ & = & \log\mathcal{N}\left(y_{1}|Cx_{1},CC^{T}+R\right)+\sum_{t=1}^{T-1}\log\mathcal{N}\left(y_{t+1}|CAx_{t},CQC^{T}+R+\left(CA\right)\Sigma_{t|t}\left(CA\right)^{T}\right)
+\end{eqnarray*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section*
+Part (c)
+\end_layout
+
+\begin_layout Standard
+The M-step update for 
+\begin_inset Formula $R$
+\end_inset
+
+ is 
+\begin_inset Formula 
+\[
+R^{new}=\frac{1}{T}\sum_{t=1}^{T}\left(y_{t}y_{t}^{T}-y_{t}\mathbb{E}\left[x_{t}|y\right]^{T}\left(C^{new}\right)^{T}\right)
+\]
+
+\end_inset
+
+This form can be derived by matching moments with the data.
+\end_layout
+
+\begin_layout Section*
+Part (d)
+\end_layout
+
+\begin_layout Standard
+See Figure 6.
+ The resulting model parameters are 
+\begin_inset Formula 
+\begin{eqnarray*}
+A & = & \left[\begin{array}{cc}
+1.0071 & -0.1593\\
+0.1331 & 0.9544
+\end{array}\right]\\
+Q & = & \left[\begin{array}{cc}
+5.8014 & -0.7499\\
+-0.7499 & 6.1219
+\end{array}\right]\\
+C & = & \left[\begin{array}{cc}
+1 & 0\\
+0 & 0
+\end{array}\right]\\
+R & = & \left[\begin{array}{cc}
+18.5733 & -1.5869\\
+-1.5869 & 20.9094
+\end{array}\right]
+\end{eqnarray*}
+
+\end_inset
+
+
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename lds/q2d_ll.png
+	lyxscale 25
+	width 50text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+(left) The log-likelihood per EM iteration of the state space model on the
+ training data.
+ (right) The Kalman filtering and smoothing with the model parameters estimated
+ via EM.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Part*
+Problem 3
+\end_layout
+
+\begin_layout Section*
+Part (a)
+\end_layout
+
+\begin_layout Standard
+Our general model is a Bayes net, so marginalizing out irrelevant variables
+ we have 
+\begin_inset Formula 
+\[
+p(z)=p(z_{1})\prod_{t=2}^{T}p(z_{t}|z_{t-1})
+\]
+
+\end_inset
+
+Then we wish to find
+\begin_inset Formula 
+\begin{eqnarray*}
+\pi & = & \arg\max_{\tilde{\pi}}\log p(z_{1})+\sum_{t=2}^{T}\log p(z_{t}|z_{t-1})\\
+ & \overset{(a)}{=} & \arg\max_{\tilde{\pi}}\sum_{t=2}^{T}\log\tilde{\pi}_{t-1,t}\\
+ & \overset{(b)}{=} & \left(\begin{array}{c}
+\arg\max_{\tilde{\pi}_{1}}\sum_{t\geq2:z_{t-1}=1}\log\tilde{\pi}_{1,t}\\
+\arg\max_{\tilde{\pi}_{2}}\sum_{t\geq2:z_{t-1}=2}\log\tilde{\pi}_{2,t}\\
+\arg\max_{\tilde{\pi}_{3}}\sum_{t\geq2:z_{t-1}=3}\log\tilde{\pi}_{3,t}
+\end{array}\right)
+\end{eqnarray*}
+
+\end_inset
+
+where (a) follows from the fact that
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\strikeout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ we assume 
+\begin_inset Formula $p(z_{1})$
+\end_inset
+
+ is uniform
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\bar default
+\strikeout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+ and (b) follows from the fact that each row of 
+\begin_inset Formula $\pi$
+\end_inset
+
+ is exactly the pmf of a categorical distribution: 
+\begin_inset Formula $p(z_{t}|z_{t-1}=i)\sim\mbox{Cat}\left(\pi_{i}\right)$
+\end_inset
+
+.
+ Therefore, we can optimize of each 
+\begin_inset Formula $\pi_{i}$
+\end_inset
+
+ individually using the standard ML estimation for categorical distributions:
+\begin_inset Formula 
+\[
+\pi_{i,j}=\frac{\sum_{t=2}^{T}\mathbb{I}\left\{ z_{t}=j,z_{t-1}=i\right\} }{\sum_{t=1}^{T}\mathbb{I}\left\{ z_{t}=i\right\} }
+\]
+
+\end_inset
+
+This gives the following transition matrix for each training split:
+\begin_inset Formula 
+\[
+\pi=\left[\begin{array}{ccc}
+0.9735 & 0 & 0.0265\\
+0 & 0.9794 & 0.0206\\
+0.0207 & 0.0207 & 0.9586
+\end{array}\right],\left[\begin{array}{ccc}
+0.9793 & 0 & 0.0207\\
+0 & 0.9798 & 0.0202\\
+0.0143 & 0.0127 & 0.9731
+\end{array}\right],\left[\begin{array}{ccc}
+0.9749 & 0 & 0.0251\\
+0 & 0.9777 & 0.0223\\
+0.0187 & 0.0172 & 0.9641
+\end{array}\right]
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section*
+Part (b)
+\end_layout
+
+\begin_layout Standard
+See attached code.
+\end_layout
+
+\begin_layout Section*
+Part (c)
+\end_layout
+
+\begin_layout Standard
+See attached code.
+\end_layout
+
+\begin_layout Section*
+Part (d)
+\end_layout
+
+\begin_layout Standard
+See Figure 7.
+ The resulting model parameters for the first train-test split are
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+A_{1} & = & \left[\begin{array}{cccc}
+1.0093 & 0.0243 & 0.0571 & 0.0588\\
+-0.0325 & 0.9733 & 0.0656 & -0.0384\\
+-0.0674 & 0.0358 & 0.8880 & -0.1381\\
+-0.0067 & 0.0041 & 0.0791 & 0.9833
+\end{array}\right]\\
+Q_{1} & = & \left[\begin{array}{cccc}
+0.0085 & 0.0007 & -0.0012 & -0.0002\\
+0.0007 & 0.0101 & 0.0020 & 0.0008\\
+-0.0012 & 0.0020 & 0.0637 & 0.0038\\
+-0.0002 & 0.0008 & 0.0038 & 0.0047
+\end{array}\right]\\
+C_{1} & = & \left[\begin{array}{cccc}
+1\\
+ & 1\\
+ &  & 1\\
+ &  &  & 1
+\end{array}\right]\\
+R_{1} & = & \left[\begin{array}{cccc}
+0.0003 & -0.0003 & -0.0025 & 0.0003\\
+-0.0003 & 0.0011 & 0.0078 & -0.0013\\
+-0.0025 & 0.0078 & 0.0712 & -0.0131\\
+0.0003 & -0.0013 & -0.0131 & 0.0063
+\end{array}\right]
+\end{align*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename bees/q3d_split_1_2_k_1.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename bees/q3d_split_1_2_k_2.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename bees/q3d_split_1_2_k_3.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename bees/q3d_split_1_3_k_1.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename bees/q3d_split_1_3_k_2.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename bees/q3d_split_1_3_k_3.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename bees/q3d_split_2_3_k_1.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename bees/q3d_split_2_3_k_2.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename bees/q3d_split_2_3_k_3.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Log-likelihood per iteration for each train-test split and each 
+\begin_inset Formula $z=1,2,3$
+\end_inset
+
+.
+ Every row corresponds to one train-test split and every column correspond
+ to 
+\begin_inset Formula $z=1,2,3$
+\end_inset
+
+ in order.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section*
+Part (e)
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{eqnarray*}
+p(\tilde{y}_{t}|y_{t},z_{t}=k) & = & \int_{\mathcal{Y}}p(\tilde{y}_{t}|y_{t},z_{t})p(y_{t}|x_{t},z_{t})dy\\
+ & = & \int_{\mathcal{Y}}\left(0.9\mathcal{N}\left(\tilde{y}_{t}|y_{t},0.1I_{d}\right)+0.1\mathcal{N}\left(\tilde{y}_{t}|0,5I_{d}\right)\right)\mathcal{N}\left(y_{t}|C_{k}x_{t},R_{k}\right)dy_{t}\\
+ & = & 0.9\int_{\mathcal{Y}}\mathcal{N}\left(\tilde{y}_{t}|y_{t},0.1I_{d}\right)\mathcal{N}\left(y_{t}|C_{k}x_{k},R\right)dy_{t}+0.1\int_{\mathcal{Y}}\mathcal{N}\left(\tilde{y}_{t}|0,5I_{d}\right)\mathcal{N}\left(y_{t}|C_{k}x,R_{k}\right)dy_{t}\\
+ & = & 0.9\mathcal{N}\left(\tilde{y}_{t}|C_{k}x_{t},R_{k}+0.1I_{d}\right)+0.1\mathcal{N}\left(\tilde{y}_{t}|0,5I_{d}\right)\int_{\mathcal{Y}}\mathcal{N}\left(y_{t}|C_{k}x_{t},R_{k}\right)dy\\
+ & = & 0.9\mathcal{N}\left(\tilde{y}|C_{k}x_{t},R_{k}+0.1I_{d}\right)+0.1\mathcal{N}\left(\tilde{y}_{t}|0,5I_{d}\right)
+\end{eqnarray*}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section*
+Part (f)
+\end_layout
+
+\begin_layout Standard
+See attached code.
+\end_layout
+
+\begin_layout Section*
+Part (g)
+\end_layout
+
+\begin_layout Standard
+See Figure 8.
+ Our particle filtering approach performs very well even with only 1000
+ particles.
+ Although the estimated state distributions have some small errors, the
+ estimated angle and position look very accurate.
+ 
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename bees/q3g_split_1_2_angles.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename bees/q3g_split_1_3_angles.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename bees/q3g_split_2_3_angles.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename bees/q3g_split_1_2_pos_actual.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename bees/q3g_split_1_3_pos_actual.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename bees/q3g_split_2_3_pos_actual.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename bees/q3g_split_1_2_pos_pred.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename bees/q3g_split_1_3_pos_pred.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename bees/q3g_split_2_3_pos_pred.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename bees/q3g_split_1_2_z_actual.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename bees/q3g_split_1_3_z_actual.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename bees/q3g_split_2_3_z_actual.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename bees/q3g_split_1_2_z_prob.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename bees/q3g_split_1_3_z_prob.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename bees/q3g_split_2_3_z_prob.png
+	lyxscale 15
+	width 33text%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Visualizations of the predictions made in 3(g).
+ Each column corresponds to a particular train/test split where the left
+ column shows testing on the 3rd sequence, the middle column shows testing
+ on the 2nd sequence and the right shows testing on the 1st sequence.
+ Each row corresponds to different visualizations of our predictions on
+ the held our sequence.
+ In particular, the first row shows the true angle of the bee vs the estimated
+ angle.
+ The second row shows the actual 2D position of the bee.
+ The third row shows our estimated 2D position of the bee.
+ The fourth row shows the actual states of the bee in the testing sequence
+ over time.
+ Finally, the fifth row shows the estimated probabilities of each state
+ over time in the testing sequence.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
