@@ -17,6 +17,7 @@ function [labels, data] = load_data(dname, I_seq)
 %         poses for the k-th gesture and the i-th sequence. T_{k,i} is the
 %         length of this particular sequence.
 %
+joints_to_use = 5:12;%1:20; 5:12
 
 all_labels = char('*NONE*', 'vattene', 'vieniqui', 'perfetto', 'furbo', 'cheduepalle', 'chevuoi', 'daccordo', 'seipazzo', ...
              'combinato','freganiente','ok','cosatifarei','basta','prendere','noncenepiu','fame',...
@@ -48,6 +49,9 @@ for ind=1:numel(I_seq)
        for j=info.Begin:info.End
            positions = Video.Frames(j).Skeleton.WorldPosition;
            rotations = Video.Frames(j).Skeleton.WorldRotation;
+           % *perhaps fewer joints could be needed for SSP
+           positions = positions(joints_to_use,:); 
+           rotations = rotations(joints_to_use,:);
            positions = reshape(positions, 1, numel(positions));
            rotations = reshape(rotations, 1, numel(rotations));
            data{k}{num_seq_k+1}(:,end+1) = [positions,rotations];
@@ -60,6 +64,9 @@ for ind=1:numel(I_seq)
            for j=none_index:info.Begin-1
                positions = Video.Frames(j).Skeleton.WorldPosition;
                rotations = Video.Frames(j).Skeleton.WorldRotation;
+               % *perhaps fewer joints could be needed for SSP
+               positions = positions(joints_to_use,:); 
+               rotations = rotations(joints_to_use,:);
                positions = reshape(positions, 1, numel(positions));
                rotations = reshape(rotations, 1, numel(rotations));
                data{1}{num_seq_1+1}(:,end+1) = [positions,rotations];
