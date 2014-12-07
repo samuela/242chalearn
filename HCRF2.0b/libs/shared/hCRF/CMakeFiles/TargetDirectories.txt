@@ -1,0 +1,4 @@
+/Users/samuelainsworth/Development/242chalearn/HCRF2.0b/libs/shared/hCRF/cgdescent/CMakeFiles/cgDescent.dir
+/Users/samuelainsworth/Development/242chalearn/HCRF2.0b/libs/shared/hCRF/CMakeFiles/hCRF.dir
+/Users/samuelainsworth/Development/242chalearn/HCRF2.0b/libs/shared/hCRF/lbfgs/CMakeFiles/lbfgs.dir
+/Users/samuelainsworth/Development/242chalearn/HCRF2.0b/libs/shared/hCRF/uncOptim/CMakeFiles/uncoptim.dir

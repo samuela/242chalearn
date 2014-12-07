@@ -1,0 +1,1 @@
+/usr/bin/c++  -Wall -fPIC -bundle -Wl,-headerpad_max_install_names   -o libmatHCRF.mexmaci CMakeFiles/matHCRF.dir/src/matHCRF.cpp.o hCRF/libhCRF.a hCRF/cgdescent/libcgDescent.a hCRF/lbfgs/liblbfgs.a hCRF/uncOptim/libuncoptim.a 

@@ -43,3 +43,27 @@ print len(train_data)
 
 # plt.plt(ssvm.loss_curve_)
 # plt.show()
+
+print '... Building model'
+# model = ChainCRF()
+# Xs, Ys = zip(*train_data)
+
+# plt.plt(ssvm.loss_curve_)
+# plt.show()
+
+import pycrfsuite
+
+trainer = pycrfsuite.Trainer(verbose=True, algorithm='lbfgs')
+for xseq, yseq in train_data:
+    trainer.append(xseq, yseq)
+
+trainer.set_params({
+    'c1': 1.0,   # coefficient for L1 penalty
+    'c2': 1e-3,  # coefficient for L2 penalty
+    'max_iterations': 50,  # stop earlier
+
+    # include transitions that are possible, but not observed
+    'feature.possible_transitions': True
+})
+
+trainer.train('crfsuite_basic_crf.model')

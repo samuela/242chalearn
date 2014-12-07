@@ -9,7 +9,7 @@ function ll = compute_slds_bound( num_states, model, data, x0, P0, Eedge, Exx, X
   for k=1:num_states
     
     % unpack alphabet
-    [A, C, Q, R ] = deal( model{k}.A, model{k}.C, model{k}.Q, model{k}.R );
+    [A, C, Q, R] = deal( model{k}.A, model{k}.C, model{k}.Q, model{k}.R );
     Qinv = inv(Q);
     Rinv = inv(R);
     P0inv = inv(P0);    
@@ -39,7 +39,7 @@ function ll = compute_slds_bound( num_states, model, data, x0, P0, Eedge, Exx, X
       end
       
       % normalizers
-      ll = ll - 1/2 * log( det(P0) ) - (T-1)/2 * log( det( Q ) ) - T/2 * log( det( R) );
+      ll = ll - 1/2 * log( det(P0) ) - (T-1)/2 * log( det( Q ) ) - T/2 * log( det(R) );
     end
   end
 end
