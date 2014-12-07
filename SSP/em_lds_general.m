@@ -15,7 +15,6 @@ function [ model, ll_iter] = em_lds_general(model_init, x0, P0, data, max_iters,
 %
 % Brown CS242
 
-
   % general init
   done = false;
   conv_for = 0; % # iters converged for
@@ -66,12 +65,20 @@ function [ model, ll_iter] = em_lds_general(model_init, x0, P0, data, max_iters,
           end
         end
     
-        
-        
-        
-        
         % MARGINAL LOG-LIKELIHOOD
-        ll = ll + log(mvnpdf(data{s}(1,:)',C*x0,C*P0*C'+R));
+        temp = C*P0*C'+R;
+        if ~(issymmetric(temp)&&all(eig(temp)>0))            
+            temp = (temp+temp')/2;
+            [vv,dd]=eig(temp);
+            temp = vv*(eye(size(dd)).*max(dd,0.0001))/vv;
+            temp = (temp+temp')/2;
+            if iters>1 && ~(issymmetric(temp)&&all(eig(temp)>0))
+                break;
+            end
+            
+        end
+        
+        ll = ll + log(mvnpdf(data{s}(1,:)',C*x0,temp));
         for t=1:(T(s)-1)
             covv = (C*A)*Pf{s}(:,:,t)*(C*A)'+C*Q*C'+R;
             %[v,d] = eig(covv);
@@ -84,6 +91,9 @@ function [ model, ll_iter] = em_lds_general(model_init, x0, P0, data, max_iters,
                 covv = vv*(eye(size(dd)).*max(dd,0.0001))/vv;
             end
             covv = (covv + covv')/2;
+            if ~(issymmetric(covv)&&all(eig(covv)>0))
+                break;
+            end
             ll = ll + log(mvnpdf(data{s}(t+1,:)',C*A*Xf{s}(:,t),covv));
         end
         %{
@@ -117,7 +127,6 @@ function [ model, ll_iter] = em_lds_general(model_init, x0, P0, data, max_iters,
     ll=sum(ll(:));
 
     if ~isfinite(ll) %|| ll < ll_old
-        fprintf('\ndone cuz infinite ll');
         break;
     end
     
@@ -127,7 +136,6 @@ function [ model, ll_iter] = em_lds_general(model_init, x0, P0, data, max_iters,
       fprintf('\n(Iter #%d) LL: %0.3f, D: %0.3f', iters, ll, diff);
       conv_for = ( diff < conv_tol )*(conv_for+1);
       if ( conv_for > 3 || (iters >= max_iters) ) % ( ( diff < conv_tol ) || (iters >= max_iters) )
-        fprintf('\ndone cuz below tolerance');
         break;
       end
     end
@@ -200,14 +208,6 @@ function [ model, ll_iter] = em_lds_general(model_init, x0, P0, data, max_iters,
     
     for s = 1:S
         for t=1:T(s)
-              %size(data{s}(t,:)' * data{s}(t,:))
-              %size(C_new * Xs{s}(:,t) * data{s}(t,:))
-              %size(data{s}(t,:) * Xs{s}(:,t)' * C_new')
-              %size(C_new * Exx{s}(:,:,t) * C_new')
-              %size(data{s}(:,t))  % 47  x 1
-              %size(C_new)         % 140 x 140
-              %size(Xs{s}(:,t))    % 140 x 1
-              %size(Exx{s}(:,:,t)) % 140 x 140
             R_new = R_new + data{s}(t,:)' * data{s}(t,:) ...
                 - C_new * Xs{s}(:,t) * data{s}(t,:) ...
                 - data{s}(t,:)' * Xs{s}(:,t)' * C_new' ...
