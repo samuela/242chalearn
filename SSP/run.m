@@ -3,7 +3,7 @@ num_states = 21;
 
     %% Get data
     fprintf('...Gathering data\n')
-    inds = [1:11];
+    inds = [1:15];
     inds(1) = [];
     % split into train/test
     [labels_train, data_train, ~] = load_data('../../data/skainswo/chalearn/train', inds);
