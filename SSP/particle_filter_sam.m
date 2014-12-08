@@ -32,7 +32,7 @@ function [Xpost, Zpost] = particle_filter_sam(num_particles, model, data, pi)
 %     end
 %     w = w/sum(w);
 
-    fast way
+    %fast way
     for k=1:num_states
 %       (model{k}.C * X(:,Z == k))'
       if sum(Z == k) > 0
@@ -58,12 +58,14 @@ function [Xpost, Zpost] = particle_filter_sam(num_particles, model, data, pi)
 %          cov_mat = V * diag(max(eig_diag, eig_tol)) / V;
 %        end
 %        eig(cov_mat)
-        w(Z == k) = mvnpdf(data(:,t)', ...
+        w(Z == k) = logmvnpdf(data(:,t)', ...
                                  (model{k}.C * X(:,Z == k))', ...
                                  cov_mat);
       end
     end
-    w = w / sum(w);
+    m = mean(w);
+    normalizing = m+log(sum(exp(w-m)));
+    w = exp(w - normalizing);
     
     % Calculate posterior mean and Z_t distribution
     Xpost(:,t) = X * w;
@@ -74,7 +76,6 @@ function [Xpost, Zpost] = particle_filter_sam(num_particles, model, data, pi)
     Zpost(:,t) = temp / sum(temp);
     
     % Resample
-    w
     ix = randsample(1:num_particles, num_particles, true, w);
     Z = Z(ix);
     X = X(:,ix);
@@ -89,7 +90,7 @@ function [Xpost, Zpost] = particle_filter_sam(num_particles, model, data, pi)
     newZ = zeros(1, num_particles);
     for k=1:num_states
       if sum(Z == k) > 0
-        newZ(Z == k) = randsample(1:3, sum(Z == k), true, pi(k,:));
+        newZ(Z == k) = randsample(1:num_states, sum(Z == k), true, pi(k,:));
       end
     end
     Z = newZ;

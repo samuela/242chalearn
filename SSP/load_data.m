@@ -29,7 +29,8 @@ all_labels = char('*NONE*', 'vattene', 'vieniqui', 'perfetto', 'furbo', 'cheduep
 
 [num_states, ~] = size(all_labels);
 
-sequences = char('00710','00050','00279');
+%sequences = char('00710','00050','00279');
+sequences = char('00403', '00058', '00059', '00060', '00061', '00062', '00063', '00064', '00065', '00066', '00067');
 data = cell([num_states, 1]);
 labels = cell([numel(I_seq), 1]);
 seqs = cell([numel(I_seq), 1]);
