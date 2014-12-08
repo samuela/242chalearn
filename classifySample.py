@@ -30,13 +30,18 @@ def smooth(pred):
     return [k for k, g in groupby(smoothed)]
 
 
-train_num_files = 200
+train_num_files = 100
 samples_per_file = 200
 train_file_pattern = '/users/skainswo/data/skainswo/chalearn/train/Sample*_data.mat'
 all_train_files = glob(train_file_pattern)
-test_file = all_train_files[0]
-print "test file", test_file
-train_data_files = random.sample(all_train_files[1:], train_num_files)
+#test_file = all_train_files[0]
+#print "test file", test_file
+train_data_files = random.sample(all_train_files, train_num_files)
+
+validation_num_files = 50
+validation_file_pattern = '/users/skainswo/data/skainswo/chalearn/validation/Sample*_data.mat'
+all_validation_files = glob(validation_file_pattern)
+validation_data_files = random.sample(all_validation_files, validation_num_files)
 
 # validation_num_files = 200
 # validation_file_pattern = '/users/skainswo/data/skainswo/chalearn/validation/Sample*_data.mat'
@@ -59,11 +64,49 @@ del train_data
 
 print Xtrain.shape, len(Ytrain)
 
-def trainAndPredict(clf, fn):
+def trainClassifier(clf):
     clf = clf.fit(Xtrain, Ytrain)
-    pred = predict(clf,fn)
-    return pred
+    return clf
 
-print 'training and predicting'
-print 'predicted', trainAndPredict(RandomForestClassifier(n_estimators=250, n_jobs=-1), test_file)
-print 'actual', [k for k, g in groupby(loadFile(test_file)['frame_labels']) if k > 0]
+#def trainAndPredict(clf, fn):
+#    clf = clf.fit(Xtrain, Ytrain)
+#    pred = predict(clf,fn)
+#    return pred
+
+print '...training'
+clf = trainClassifier(RandomForestClassifier(n_estimators=250, n_jobs=-1))
+
+#copied from http://hetland.org/coding/python/levenshtein.py
+def levenshtein(a,b):
+    "Calculates the Levenshtein distance between a and b."
+    n, m = len(a), len(b)
+    if n > m:
+        # Make sure n <= m, to use O(min(n,m)) space
+        a,b = b,a
+        n,m = m,n
+        
+    current = range(n+1)
+    for i in range(1,m+1):
+        previous, current = current, [i]+[0]*n
+        for j in range(1,n+1):
+            add, delete = previous[j]+1, current[j-1]+1
+            change = previous[j-1]
+            if a[j-1] != b[i-1]:
+                change = change + 1
+            current[j] = min(add, delete, change)
+            
+    return current[n]
+
+print '...done training'
+lev_dists = []
+for valid_file in validation_data_files:
+    pred = predict(clf, valid_file)
+    actual = [k for k, g in groupby(loadFile(valid_file)['frame_labels']) if k > 0]
+    print levenshtein(pred,actual)
+    print 'length of actual: ', actual
+    lev_dists = lev_dists + [levenshtein(pred,actual)]
+
+#print 'predicted', trainAndPredict(RandomForestClassifier(n_estimators=250, n_jobs=-1), test_file)
+#print 'actual', [k for k, g in groupby(loadFile(test_file)['frame_labels']) if k > 0]
+
+print lev_dists
