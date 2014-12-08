@@ -26,13 +26,13 @@ function [Xpost, Zpost] = particle_filter_sam(num_particles, model, data, pi)
     % Re-weight particles
     w = zeros(num_particles, 1);
     
-    % slow way
+%     %slow way
 %     for i=1:num_particles
 %       w(i) = mvnpdf(data(:,t), model{Z(i)}.C * X(:,i), model{Z(i)}.R);
 %     end
 %     w = w/sum(w);
 
-    % fast way
+    fast way
     for k=1:num_states
 %       (model{k}.C * X(:,Z == k))'
       if sum(Z == k) > 0
@@ -40,17 +40,17 @@ function [Xpost, Zpost] = particle_filter_sam(num_particles, model, data, pi)
 %           mvnpdf(data(:,t)', ...
 %                                  (model{k}.C * X(:,Z == k))', ...
 %                                  model{k}.R + 0.1 * eye(D));
-        fprintf('state %d\n',k);
+        %fprintf('state %d\n',k);
         cov_mat = model{k}.R;
         cov_mat = (cov_mat + cov_mat')/2; %its very close to symmetric, but not exactly.
-        eig(cov_mat)
-        if ~all(eig(cov_mat) > 0)
-                [V, d] = eig(cov_mat);
-                d1 = sum(d, 2);
-                d1 = max(d1, .001);
-                cov_mat = V * diag(d1) / V;
-        end
-        eig(cov_mat)
+%         eig(cov_mat)
+%         if ~all(eig(cov_mat) > 0)
+%                 [V, d] = eig(cov_mat);
+%                 d1 = sum(d, 2);
+%                 d1 = max(d1, .001);
+%                 cov_mat = V * diag(d1) / V;
+%         end
+%        eig(cov_mat)
 %        eig_tol = 0.00001;
 %        [V, eig_diag] = eig(cov_mat);
 %        eig_diag = sum(eig_diag); %collapse it from a diagonal matrix to a vector
@@ -67,10 +67,14 @@ function [Xpost, Zpost] = particle_filter_sam(num_particles, model, data, pi)
     
     % Calculate posterior mean and Z_t distribution
     Xpost(:,t) = X * w;
-    temp = [(Z == 1) * w; (Z == 2) * w; (Z == 3) * w];
+    temp = zeros(num_states, 1);%[(Z == 1) * w; (Z == 2) * w; (Z == 3) * w];
+    for state_num = 1:num_states
+        temp(state_num) = (Z == state_num) * w;
+    end
     Zpost(:,t) = temp / sum(temp);
     
     % Resample
+    w
     ix = randsample(1:num_particles, num_particles, true, w);
     Z = Z(ix);
     X = X(:,ix);

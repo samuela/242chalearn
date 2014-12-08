@@ -242,17 +242,27 @@ function [ model, ll_iter] = em_lds_general(model_init, x0, P0, data, max_iters,
     %}
 
     % update model
+    R_new = (R_new + R_new')/2;
+    if ~(all(eig(R_new)>0))
+        fprintf('R_new ');
+        break;
+    end
+    if ~(all(eig(Q_new)>0))
+        fprintf('Q_new');
+        break;
+    end
     model.A = A_new;
     model.Q = Q_new;
     model.C = C_new;
     model.R = R_new;
     
+    
 end
 
 
-model.A;
-model.Q;
-model.C;
-model.R;
+% model.A;
+% model.Q;
+% model.C;
+% model.R;
 
 end
