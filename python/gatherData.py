@@ -131,7 +131,7 @@ def gatherAllXY(fn, window_size):
                             rot[ix - window_size:ix + window_size].ravel())))
         Y.append(labels[ix])
 
-    return np.array(X), Y
+    return np.array(X), np.array(Y)
 
 def gatherAllXYNoWindow(fn):
     data = loadFile(fn)
