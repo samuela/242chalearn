@@ -106,7 +106,7 @@ def marginals_and_logPartition(xl, theta, gamma, D):
     # m_fwd[:,t] = m_{t,t+1}
     log_sums = np.zeros(T) #logs of the normalization constants
     for t in range(1,T):
-        lp = logPhi(t, xl, theta, gamma, D)
+        lp = logPhi(t, xl, theta, gamma, D) # exp sum log trick
         max_val = np.max(lp)
         unnormalized_message = np.dot(np.exp(lp-max_val).T, m_fwd[:, t-1])
         sum_t = sum(unnormalized_message)
@@ -116,7 +116,7 @@ def marginals_and_logPartition(xl, theta, gamma, D):
     m_bwd = np.ones([D, T]) #backward messages. Last column is just ones
     # m_bwd[:,t] = m_{t+2,t+1}
     for t in range(T - 2, -1, -1): #T-2,T-3,...,0
-        lp = logPhi(t+1, xl, theta, gamma, D)
+        lp = logPhi(t+1, xl, theta, gamma, D) # exp sum log trick
         max_val = np.max(lp)
         unnormalized_message = np.dot(np.exp(lp-max_val), m_bwd[:, t+1])
         m_bwd[:,t] = unnormalized_message / sum(unnormalized_message)
@@ -128,7 +128,7 @@ def marginals_and_logPartition(xl, theta, gamma, D):
     #now pairwise marginals
     p_2 = np.zeros([D, D, T-1])
     for t in range(T-1):
-        lp = logPhi(t+1, xl, theta, gamma, D)
+        lp = logPhi(t+1, xl, theta, gamma, D) # exp sum log trick
         max_val = np.max(lp)
         p_2[:,:,t] = np.exp(lp-max_val) * m_fwd[:,t].reshape(D,1) * m_bwd[:,t+1].reshape(1,D)# this is the unnormalized marginal on y_{t+1,t+2}
         p_2[:,:,t] = p_2[:,:,t] / p_2[:,:,t].sum() #normalized
@@ -176,12 +176,49 @@ def learnSGD(x, y, theta_init, gamma_init, lamb, K, D):
         # TODO
 
 def posteriorMAP(xl, theta, gamma, D):
-    #TODO
-    return 0
+    # xl is a K by T matrix of features
+    # theta is a D by D array
+    # gamma is a D by K array
+
+    _, T = xl.shape
+    R = np.zeros([T, D])
+    M = np.zeros([T, D])
+    for t in range(1,T):
+        lp = logPhi(t, xl, theta, gamma, D)
+        objective = lp + M[t-1, :].reshape(D,1)
+        R[t, :] = np.argmax(objective, axis=0)
+        M[t, :] = np.max(objective, axis=0)
+    y = np.zeros(T)
+    y[T-1] = np.argmax(M[T-1, :])
+    for t in range(T-2,-1,-1):
+       y[t] = R[t+1, y[t+1]]
+    return y
 
 def samplePosterior(xl, theta, gamma, D, num_samples):
-    #TODO
-    return 0
+    # xl is a K by T matrix of features
+    # theta is a D by D array
+    # gamma is a D by K array
+    # num_samples is the number of samples to draw from the posterior distribution
+
+    _, T = xl.shape
+    S = np.ones([T, D])
+    for t in range(T-2, -1, -1):
+        lp = logPhi(t-1, xl, theta, gamma, D) # exp sum log trick
+        max_val = np.max(lp)
+        S[t, :] = np.dot(np.exp(lp-max_val), S[t+1, :].T)
+        S[t, :] = S[t,:] / S[t, :].sum()
+    samples = np.zeros([num_samples, T])
+    for num in range(num_samples):
+        P = np.zeros([T, D])
+        P[0, :] = S[0, :]
+        samples[num, 0] = np.random.choice(range(D), p = P[0, :])
+        for t in range(1,T):
+            lp = logPhi(t, xl, theta, gamma, D) # exp sum log trick
+            max_val = np.max(lp)
+            P[t,:] = np.exp(lp - max_val)[samples[num, t-1], :] * S[t, :]
+            P[t,:] = P[t,:] / P[t,:].sum()
+            samples[num, t] = np.random.choice(range(D), p = P[t, :])
+    return samples
 
 def posteriorMarginalMAP(xl, theta, gamma, D):
     p_1, _, _ = marginals_and_logPartition(xl, theta, gamma, D) #p_1 is a D by T matrix
