@@ -165,7 +165,7 @@ def learnParameters(x, y, K, D, regularization=1, theta_init=None, gamma_init=No
                                 full_output=True, iprint=0, epsilon=1e-4)
     return vectorToParams(results[0], K, D)
 
-def learnSGD(x, y, theta_init, gamma_init, lambda, K, D):
+def learnSGD(x, y, theta_init, gamma_init, lamb, K, D):
     max_iter = 500
     tol = 1e-4
     batch_size = 50
