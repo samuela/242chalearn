@@ -8,27 +8,29 @@
 
 import numpy as np
 import scipy.optimize as opt
+from random import sample
 #import multiprocessing as mp
 #from multiprocessing import Pool
 #from multiprocessing.dummy import Pool as ThreadPool
 
-def suffStats(x,y, K, D):
+def suffStats(x, y, K, D):
     # x is an L length list of K by T(l) matrices of features
     # y is an L length list of T(l) length arrays of labels
-    
+
     L = len(x)
     gamma_ss = np.zeros([D,K])
     theta_ss = np.zeros([D,D])
     for l in range(L):
         # first suff stat for gamma
         ymat = np.array([y[l] == i for i in range(D)]) * 1.0
-        gamma_ss = gamma_ss + np.dot(ymat, x[l].T)
-    
+        gamma_ss += np.dot(ymat, x[l].T)
+
         # next suff stats for theta
         yt = ymat[:,:-1]
         ytp1 = ymat[:,1:]
-        theta_ss = theta_ss + np.dot(yt , ytp1.T)
-    return (gamma_ss, theta_ss)
+        theta_ss += np.dot(yt , ytp1.T)
+
+    return gamma_ss, theta_ss
 
 def expectedStats(x, theta, gamma, K, D):
     # x is an L length list of K by T(l) matrices of features
@@ -46,7 +48,7 @@ def expectedStats(x, theta, gamma, K, D):
         theta_es = theta_es + np.sum(p_2, axis=2)
     return (gamma_es, theta_es)
 
-def gradient(x,y,theta,gamma, K, D):
+def gradient(x, y, theta, gamma, K, D):
     # x is an L length list of K by T(l) matrices of features
     # y is an L length list of T(l) length arrays of labels
     # theta is a D by D array
@@ -56,7 +58,7 @@ def gradient(x,y,theta,gamma, K, D):
     gamma_es, theta_es = expectedStats(x,theta,gamma, K, D)
     return paramsToVector(theta_ss - theta_es, gamma_ss - gamma_es)
 
-def logLikelihood(x,y,theta,gamma, D):
+def logLikelihood(x, y, theta, gamma, D):
     # x is an L length list of K by T(l) matrices of features
     # y is an L length list of T(l) length arrays of labels
     # theta is a D by D array
@@ -70,18 +72,17 @@ def logLikelihood(x,y,theta,gamma, D):
         yt = ymat[:,:-1]
         ytp1 = ymat[:,1:]
         n_ij = np.dot(yt, ytp1.T)
-        ans = ans + (theta * n_ij).sum()
+        theta_term = (theta * n_ij).sum()
 
         # gamma term
-        ans = ans + (np.dot(ymat, x[l].T) * gamma).sum()
+        gamma_term = (np.dot(ymat, x[l].T) * gamma).sum()
 
         # log partition function
         _, _, logPartition = marginals_and_logPartition(x[l],theta,gamma, D)
-        ans = ans - logPartition
-        return ans
-    answers = map(calculate_term, range(L))
-    return sum(answers)
-    
+        return theta_term + gamma_term - logPartition
+
+    return sum(map(calculate_term, range(L)))
+
 
 def logPhi(t, xl, theta, gamma, D):
     # xl is a K by T matrix of features
@@ -110,7 +111,7 @@ def marginals_and_logPartition(xl, theta, gamma, D):
         sum_t = sum(unnormalized_message)
         m_fwd[:,t] = unnormalized_message / sum_t
         log_sums[t] = np.log(sum_t) + max_val
-    
+
     m_bwd = np.ones([D, T]) #backward messages. Last column is just ones
     # m_bwd[:,t] = m_{t+2,t+1}
     for t in range(T - 2, -1, -1): #T-2,T-3,...,0
@@ -129,35 +130,49 @@ def marginals_and_logPartition(xl, theta, gamma, D):
         lp = logPhi(t+1, xl, theta, gamma, D)
         max_val = np.max(lp)
         p_2[:,:,t] = np.exp(lp-max_val) * m_fwd[:,t].reshape(D,1) * m_bwd[:,t+1].reshape(1,D)# this is the unnormalized marginal on y_{t+1,t+2}
-        p_2[:,:,t] = p_2[:,:,t]/p_2[:,:,t].sum() #normalized
+        p_2[:,:,t] = p_2[:,:,t] / p_2[:,:,t].sum() #normalized
 
-    return (p_1,p_2,logPartition)
+    return p_1, p_2, logPartition
 
-def paramsToVector(theta,gamma):
+def paramsToVector(theta, gamma):
     return np.concatenate((theta.ravel(), gamma.ravel()))
 
 def vectorToParams(vec, K, D):
     theta = vec[:D*D].reshape(D,D)
     gamma = vec[D*D:].reshape(D,K)
-    return (theta,gamma)
+    return theta, gamma
 
-def learnParameters(x,y,theta_init, gamma_init, regularization, K, D):
+def learnParameters(x, y, K, D, regularization=1, theta_init=None, gamma_init=None):
     # x is an L length list of K by T(l) matrices of features
     # y is an L length list of T(l) length arrays of labels
     # theta_init is a D by D array
     # gamma_init is a D by K array
 
+    if theta_init is None:
+        theta_init = np.random.randn(D, D)
+    if gamma_init is None:
+        gamma_init = np.random.randn(D, K)
+
     def nll(vec):
         theta, gamma = vectorToParams(vec, K, D)
-        return (-1.0) * (logLikelihood(x,y,theta,gamma,D) - regularization * np.dot(vec,vec))
+        return (-1.0) * (logLikelihood(x, y, theta, gamma, D) - regularization * np.dot(vec,vec))
 
     def ngrad(vec):
         theta, gamma = vectorToParams(vec, K, D)
-        return (-1.0) * (gradient(x,y,theta,gamma,K,D) - 2 * regularization * vec)
+        return (-1.0) * (gradient(x, y, theta, gamma, K, D) - 2 * regularization * vec)
 
-    vec = opt.fmin_bfgs(nll, paramsToVector(theta_init, gamma_init), ngrad,
-                        full_output = True, retall = True)[0]
-    return vectorToParams(vec, K, D)
+    results = opt.fmin_l_bfgs_b(nll, paramsToVector(theta_init, gamma_init), ngrad,
+                                full_output=True, iprint=0, epsilon=1e-4)
+    return vectorToParams(results[0], K, D)
+
+def learnSGD(x, y, theta_init, gamma_init, lambda, K, D):
+    max_iter = 500
+    tol = 1e-4
+    batch_size = 50
+
+    for i in max_iter:
+        batch_x, batch_y = zip(*sample(zip(x, y), batch_size))
+        # TODO
 
 def posteriorMAP(xl, theta, gamma, D):
     #TODO

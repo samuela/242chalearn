@@ -91,6 +91,8 @@ def loadFile(fn):
             'num_frames': num_frames,
             'frame_rate': frame_rate}
 
+# def centerToHip()
+
 def gatherRandomXY(fn, window_size, samples_per_file):
     data = loadFile(fn)
     pos = data['world_position']
@@ -120,7 +122,8 @@ def gatherAllXY(fn, window_size):
     labels = data['frame_labels']
 
     # Select only those indices corresponding to gestures.
-    all_ixs = window_size + np.where(labels[window_size:num_frames - window_size] > 0)[0]
+    # HACK >= instead of > when we wish to include the no gesture frames
+    all_ixs = window_size + np.where(labels[window_size:num_frames - window_size] >= 0)[0]
 
     X, Y = [], []
     for ix in all_ixs:

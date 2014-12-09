@@ -12,12 +12,12 @@ import multiprocessing as mp
 
 
 train_num_files = 50
-train_file_pattern = '/users/skainswo/data/skainswo/chalearn/train/Sample*_data.mat'
-train_data_files = random.sample(glob(train_file_pattern), train_num_files)
+# train_file_pattern = '/users/skainswo/data/skainswo/chalearn/train/Sample*_data.mat'
+train_data_files = random.sample(glob(TRAIN_FILE_PATTERN), train_num_files)
 
 validation_num_files = 5
-validation_file_pattern = '/users/skainswo/data/skainswo/chalearn/validation/Sample*_data.mat'
-validation_data_files = random.sample(glob(validation_file_pattern), validation_num_files)
+# validation_file_pattern = '/users/skainswo/data/skainswo/chalearn/validation/Sample*_data.mat'
+validation_data_files = random.sample(glob(VALID_FILE_PATTERN), validation_num_files)
 
 
 print '... Gathering data'
@@ -62,7 +62,7 @@ import pycrfsuite
 trainer = pycrfsuite.Trainer(verbose=True, algorithm='lbfgs')
 for xseq, yseq in train_data:
     trainer.append([dict([(str(k), v) for k, v in enumerate(x)]) for x in xseq],
-                    [str(int(y)) for y in yseq])
+                   [str(int(y)) for y in yseq])
 
 trainer.set_params({
     'c1': 1.0,   # coefficient for L1 penalty
