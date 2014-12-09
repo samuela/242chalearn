@@ -23,49 +23,33 @@ function [Xpost, Zpost] = particle_filter_sam(num_particles, model, data, pi)
   % X is D x num_particles
   X = mvnrnd(zeros(D, 1), eye(D), num_particles)';
   for t=1:T
+
     % Re-weight particles
-    w = zeros(num_particles, 1);
-    
-%     %slow way
-%     for i=1:num_particles
-%       w(i) = mvnpdf(data(:,t), model{Z(i)}.C * X(:,i), model{Z(i)}.R);
-%     end
-%     w = w/sum(w);
+    w = zeros(num_particles, 1);    
 
     %fast way
     for k=1:num_states
-%       (model{k}.C * X(:,Z == k))'
       if sum(Z == k) > 0
-%           data(:,t)';
-%           mvnpdf(data(:,t)', ...
-%                                  (model{k}.C * X(:,Z == k))', ...
-%                                  model{k}.R + 0.1 * eye(D));
-        %fprintf('state %d\n',k);
         cov_mat = model{k}.R;
-        cov_mat = (cov_mat + cov_mat')/2; %its very close to symmetric, but not exactly.
-%         eig(cov_mat)
-%         if ~all(eig(cov_mat) > 0)
-%                 [V, d] = eig(cov_mat);
-%                 d1 = sum(d, 2);
-%                 d1 = max(d1, .001);
-%                 cov_mat = V * diag(d1) / V;
-%         end
-%        eig(cov_mat)
-%        eig_tol = 0.00001;
-%        [V, eig_diag] = eig(cov_mat);
-%        eig_diag = sum(eig_diag); %collapse it from a diagonal matrix to a vector
-%        if any(eig_diag <= eig_tol)
-%          cov_mat = V * diag(max(eig_diag, eig_tol)) / V;
-%        end
-%        eig(cov_mat)
+        cov_mat = (cov_mat + cov_mat')/2; 
         w(Z == k) = logmvnpdf(data(:,t)', ...
                                  (model{k}.C * X(:,Z == k))', ...
                                  cov_mat);
       end
     end
-    m = mean(w);
-    normalizing = m+log(sum(exp(w-m)));
-    w = exp(w - normalizing);
+    
+    % weighting scheme
+    % find some constant c such that exp^log(weights) ~= 0
+    % and then you know you found the real weights,
+    % scooting around any numerical issues
+    temp = zeros(size(w));
+    w_sort = sort(w); ii = 1;
+    while all(temp==0)+any(isnan(temp)) == 1
+        temp = exp(w-w_sort(ii));
+        temp = temp/sum(temp);
+        ii = ii+1;
+    end
+    w = temp;
     
     % Calculate posterior mean and Z_t distribution
     Xpost(:,t) = X * w;
@@ -81,12 +65,6 @@ function [Xpost, Zpost] = particle_filter_sam(num_particles, model, data, pi)
     X = X(:,ix);
     
     % Propogate via transition probability
-%     for i=1:num_particles
-%       newZ = randsample(1:3, 1, true, pi(Z(i),:));
-%       newX = mvnrnd(model{newZ}.A * X(:,i), model{newZ}.Q);
-%       Z(i) = newZ; X(:,i) = newX;
-%     end
-    
     newZ = zeros(1, num_particles);
     for k=1:num_states
       if sum(Z == k) > 0
