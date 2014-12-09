@@ -1,6 +1,6 @@
 from glob import glob
 import random
-from gatherData import gatherAllXYNoWindow, TRAIN_FILE_PATTERN, VALID_FILE_PATTERN
+from gatherData import gatherAllXYNoWindow, gatherAllXY, TRAIN_FILE_PATTERN, VALID_FILE_PATTERN
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -22,13 +22,17 @@ validation_data_files = random.sample(glob(validation_file_pattern), validation_
 
 print '... Gathering data'
 
+window_size = 5
+def _gather(fn):
+    return gatherAllXY(fn, 5)
+
 pool = mp.Pool()
-train_data = pool.map(gatherAllXYNoWindow, train_data_files)
+train_data = pool.map(_gather, train_data_files)
 # Xtrain = np.vstack([x for (xs, ys) in train_data for x in xs])
 # Ytrain = np.vstack([y for (xs, ys) in train_data for y in ys])
 # del train_data
 
-validation_data = pool.map(gatherAllXYNoWindow, validation_data_files)
+validation_data = pool.map(_gather, validation_data_files)
 # Xvalid = np.vstack([x for (xs, ys) in validation_data for x in xs])
 # Yvalid = np.vstack([y for (xs, ys) in validation_data for y in ys])
 # del validation_data
@@ -55,12 +59,13 @@ import pycrfsuite
 
 trainer = pycrfsuite.Trainer(verbose=True, algorithm='lbfgs')
 for xseq, yseq in train_data:
-    trainer.append(xseq, yseq)
+    trainer.append([dict([(str(k), v) for k, v in enumerate(x)]) for x in xseq],
+                    [str(int(y)) for y in yseq])
 
 trainer.set_params({
     'c1': 1.0,   # coefficient for L1 penalty
     'c2': 1e-3,  # coefficient for L2 penalty
-    'max_iterations': 50,  # stop earlier
+    'max_iterations': 75,  # stop earlier
 
     # include transitions that are possible, but not observed
     'feature.possible_transitions': True
