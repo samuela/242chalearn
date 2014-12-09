@@ -69,7 +69,7 @@ def logLikelihood(x, y, theta, gamma, D):
         ans = 0
         # theta term
         ymat = np.array([y[l] == i for i in range(D)]) * 1.0
-        print y, ymat
+        print D, [y[l] == i for i in range(D)], ymat
         yt = ymat[:,:-1]
         ytp1 = ymat[:,1:]
         n_ij = np.dot(yt, ytp1.T)
