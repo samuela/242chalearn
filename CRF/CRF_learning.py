@@ -9,6 +9,8 @@
 import numpy as np
 import scipy.optimize as opt
 #import multiprocessing as mp
+#from multiprocessing import Pool
+#from multiprocessing.dummy import Pool as ThreadPool
 
 def suffStats(x,y, K, D):
     # x is an L length list of K by T(l) matrices of features
@@ -77,9 +79,6 @@ def logLikelihood(x,y,theta,gamma, D):
         _, _, logPartition = marginals_and_logPartition(x[l],theta,gamma, D)
         ans = ans - logPartition
         return ans
-
-#    pool = mp.Pool()
-#   answers = pool.map(calculate_term, range(L))
     answers = map(calculate_term, range(L))
     return sum(answers)
     
@@ -167,3 +166,7 @@ def posteriorMAP(xl, theta, gamma, D):
 def samplePosterior(xl, theta, gamma, D, num_samples):
     #TODO
     return 0
+
+def posteriorMarginalMAP(xl, theta, gamma, D):
+    p_1, _, _ = marginals_and_logPartition(xl, theta, gamma, D) #p_1 is a D by T matrix
+    return np.argmax(p_1, axis=0)
