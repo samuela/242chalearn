@@ -1,13 +1,15 @@
 # We will calculate the log likelihood and gradient of the log likelihood for
 # any given parameters theta and gamma and training exampes (x,y)
 
+# "Global" variables
 # L is number of training examples
-K = 140 # K is number of features
-D = 21 # D is number of labels
+# K is number of features
+# D is number of labels
 
 import numpy as np
+import scipy.optimize as opt
 
-def suffStats(x,y):
+def suffStats(x,y, K, D):
     # x is an L length list of K by T(l) matrices of features
     # y is an L length list of T(l) length arrays of labels
     
@@ -25,7 +27,7 @@ def suffStats(x,y):
         theta_ss = theta_ss + np.dot(yt , ytp1.T)
     return (gamma_ss, theta_ss)
 
-def expectedStats(x, theta, gamma):
+def expectedStats(x, theta, gamma, K, D):
     # x is an L length list of K by T(l) matrices of features
     # theta is a D by D array
     # gamma is a D by K array
@@ -34,24 +36,24 @@ def expectedStats(x, theta, gamma):
     gamma_es = np.zeros([D,K])
     theta_es = np.zeros([D,D])
     for l in range(L):
-        p_1, p_2, _ = marginals_and_logPartition(x[l], theta, gamma) #p_1 is a D by T(l) array of single y marignals, p_2 is a D by D by T(l)-1 array of y pair marginals
+        p_1, p_2, _ = marginals_and_logPartition(x[l], theta, gamma, D) #p_1 is a D by T(l) array of single y marignals, p_2 is a D by D by T(l)-1 array of y pair marginals
         # first stats for gamma
         gamma_es = gamma_es + np.dot(p_1, x[l].T)
         # next for theta
         theta_es = theta_es + np.sum(p_2, axis=2)
     return (gamma_es, theta_es)
 
-def gradient(x,y,theta,gamma):
+def gradient(x,y,theta,gamma, K, D):
     # x is an L length list of K by T(l) matrices of features
     # y is an L length list of T(l) length arrays of labels
     # theta is a D by D array
     # gamma is a D by K array
 
-    gamma_ss, theta_ss = suffStats(x,y)
-    gamma_es, theta_es = expectedStats(x,theta,gamma)
-    return np.concatenate(((gamma_ss-gamma_es).ravel(), (theta_ss-theta_es).ravel()))
+    gamma_ss, theta_ss = suffStats(x,y, K, D)
+    gamma_es, theta_es = expectedStats(x,theta,gamma, K, D)
+    return paramsToVector(theta_ss - theta_es, gamma_ss - gamma_es)
 
-def logLikelihood(x,y,theta,gamma):
+def logLikelihood(x,y,theta,gamma, D):
     # x is an L length list of K by T(l) matrices of features
     # y is an L length list of T(l) length arrays of labels
     # theta is a D by D array
@@ -67,15 +69,23 @@ def logLikelihood(x,y,theta,gamma):
         n_ij = np.dot(yt, ytp1.T)
         ans = ans + (theta * n_ij).sum()
 
+#        K, T = x[l].shape
+#        for t in range(T-1):
+#            ans = ans + theta[y[l][t], y[l][t+1]]
+
         # gamma term
         ans = ans + (np.dot(ymat, x[l].T) * gamma).sum()
 
+#        for t in range(T):
+#            for k in range(K):
+#                ans = ans + gamma[y[l][t], k] * x[l][k,t]
+
         # log partition function
-        _, _, logPartition = marginals_and_logPartition(x[l],theta,gamma)
+        _, _, logPartition = marginals_and_logPartition(x[l],theta,gamma, D)
         ans = ans - logPartition
     return ans
 
-def phi(t, xl, theta, gamma):
+def phi(t, xl, theta, gamma, D):
     # xl is a K by T matrix of features
     # t is an integer between 1 and T
     # theta is a D by D array
@@ -84,18 +94,19 @@ def phi(t, xl, theta, gamma):
     if (t == 1):
         return np.exp(theta + np.dot(gamma, xl[:, 0]).reshape(D,1) + np.dot(gamma, xl[:,1]).reshape(1,D))
     else:
-        return np.exp(theta + np.dot(gamma, xl[:, t-1]).reshape(D,1))
+        return np.exp(theta + np.dot(gamma, xl[:, t]).reshape(1,D))
 
-def marginals_and_logPartition(xl, theta, gamma):
+def marginals_and_logPartition(xl, theta, gamma, D):
     # xl is a K by T matrix of features
     # theta is a D by D array
     # gamma is a D by K array
 
+    _, T = xl.shape
     m_fwd = np.ones([D, T]) #forward messages. First column is just ones
     # m_fwd[:,t] = m_{t,t+1}
     log_sums = np.zeros(T) #logs of the normalization constants
     for t in range(1,T):
-        unnormalized_message = np.dot(phi(t, xl, theta, gamma).T, m_fwd[:, t-1])
+        unnormalized_message = np.dot(phi(t, xl, theta, gamma, D).T, m_fwd[:, t-1])
         sum_t = sum(unnormalized_message)
         m_fwd[:,t] = unnormalized_message / sum_t
         log_sums[t] = np.log(sum_t)
@@ -103,7 +114,7 @@ def marginals_and_logPartition(xl, theta, gamma):
     m_bwd = np.ones([D, T]) #backward messages. Last column is just ones
     # m_bwd[:,t] = m_{t+2,t+1}
     for t in range(T - 2, -1, -1): #T-2,T-3,...,0
-        unnormalized_message = np.dot(phi(t+1, xl, theta, gamma), m_bwd[:, t+1])
+        unnormalized_message = np.dot(phi(t+1, xl, theta, gamma, D), m_bwd[:, t+1])
         m_bwd[:,t] = unnormalized_message / sum(unnormalized_message)
 
     logPartition = np.sum(log_sums) #log partition function
@@ -113,7 +124,33 @@ def marginals_and_logPartition(xl, theta, gamma):
     #now pairwise marginals
     p_2 = np.zeros([D, D, T-1])
     for t in range(T-1):
-        p_2[:,:,t] = phi(t+1, xl, theta, gamma) * m_fwd[:,t].reshape(D,1) * m_bwd[:,t+1].reshape(1,D)# this is the unnormalized marginal on y_{t+1,t+2}
+        p_2[:,:,t] = phi(t+1, xl, theta, gamma, D) * m_fwd[:,t].reshape(D,1) * m_bwd[:,t+1].reshape(1,D)# this is the unnormalized marginal on y_{t+1,t+2}
         p_2[:,:,t] = p_2[:,:,t]/p_2[:,:,t].sum() #normalized
 
     return (p_1,p_2,logPartition)
+
+def paramsToVector(theta,gamma):
+    return np.concatenate((theta.ravel(), gamma.ravel()))
+
+def vectorToParams(vec, K, D):
+    theta = vec[:D*D].reshape(D,D)
+    gamma = vec[D*D:].reshape(D,K)
+    return (theta,gamma)
+
+def learnParameters(x,y,theta_init, gamma_init, K, D):
+    # x is an L length list of K by T(l) matrices of features
+    # y is an L length list of T(l) length arrays of labels
+    # theta_init is a D by D array
+    # gamma_init is a D by K array
+
+    def nll(vec):
+        theta, gamma = vectorToParams(vec, K, D)
+        return (-1.0) * logLikelihood(x,y,theta,gamma,D)
+
+    def ngrad(vec):
+        theta, gamma = vectorToParams(vec, K, D)
+        return (-1.0) * gradient(x,y,theta,gamma,K,D)
+
+    vec = opt.fmin_bfgs(nll, paramsToVector(theta_init, gamma_init), ngrad, full_output = True)[0]
+    return vectorToParams(vec)
+                  
