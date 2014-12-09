@@ -69,32 +69,24 @@ def logLikelihood(x,y,theta,gamma, D):
         n_ij = np.dot(yt, ytp1.T)
         ans = ans + (theta * n_ij).sum()
 
-#        K, T = x[l].shape
-#        for t in range(T-1):
-#            ans = ans + theta[y[l][t], y[l][t+1]]
-
         # gamma term
         ans = ans + (np.dot(ymat, x[l].T) * gamma).sum()
-
-#        for t in range(T):
-#            for k in range(K):
-#                ans = ans + gamma[y[l][t], k] * x[l][k,t]
 
         # log partition function
         _, _, logPartition = marginals_and_logPartition(x[l],theta,gamma, D)
         ans = ans - logPartition
     return ans
 
-def phi(t, xl, theta, gamma, D):
+def logPhi(t, xl, theta, gamma, D):
     # xl is a K by T matrix of features
     # t is an integer between 1 and T
     # theta is a D by D array
     # gamma is a D by K array
     # returns a matrix A such that A[i,j] = phi(y_t = i, y_{t+1} = j)
     if (t == 1):
-        return np.exp(theta + np.dot(gamma, xl[:, 0]).reshape(D,1) + np.dot(gamma, xl[:,1]).reshape(1,D))
+        return theta + np.dot(gamma, xl[:, 0]).reshape(D,1) + np.dot(gamma, xl[:,1]).reshape(1,D)
     else:
-        return np.exp(theta + np.dot(gamma, xl[:, t]).reshape(1,D))
+        return theta + np.dot(gamma, xl[:, t]).reshape(1,D)
 
 def marginals_and_logPartition(xl, theta, gamma, D):
     # xl is a K by T matrix of features
@@ -106,15 +98,19 @@ def marginals_and_logPartition(xl, theta, gamma, D):
     # m_fwd[:,t] = m_{t,t+1}
     log_sums = np.zeros(T) #logs of the normalization constants
     for t in range(1,T):
-        unnormalized_message = np.dot(phi(t, xl, theta, gamma, D).T, m_fwd[:, t-1])
+        lp = logPhi(t, xl, theta, gamma, D)
+        max_val = np.max(lp)
+        unnormalized_message = np.dot(np.exp(lp-max_val).T, m_fwd[:, t-1])
         sum_t = sum(unnormalized_message)
         m_fwd[:,t] = unnormalized_message / sum_t
-        log_sums[t] = np.log(sum_t)
+        log_sums[t] = np.log(sum_t) + max_val
     
     m_bwd = np.ones([D, T]) #backward messages. Last column is just ones
     # m_bwd[:,t] = m_{t+2,t+1}
     for t in range(T - 2, -1, -1): #T-2,T-3,...,0
-        unnormalized_message = np.dot(phi(t+1, xl, theta, gamma, D), m_bwd[:, t+1])
+        lp = logPhi(t+1, xl, theta, gamma, D)
+        max_val = np.max(lp)
+        unnormalized_message = np.dot(np.exp(lp-max_val), m_bwd[:, t+1])
         m_bwd[:,t] = unnormalized_message / sum(unnormalized_message)
 
     logPartition = np.sum(log_sums) #log partition function
@@ -124,7 +120,9 @@ def marginals_and_logPartition(xl, theta, gamma, D):
     #now pairwise marginals
     p_2 = np.zeros([D, D, T-1])
     for t in range(T-1):
-        p_2[:,:,t] = phi(t+1, xl, theta, gamma, D) * m_fwd[:,t].reshape(D,1) * m_bwd[:,t+1].reshape(1,D)# this is the unnormalized marginal on y_{t+1,t+2}
+        lp = logPhi(t+1, xl, theta, gamma, D)
+        max_val = np.max(lp)
+        p_2[:,:,t] = np.exp(lp-max_val) * m_fwd[:,t].reshape(D,1) * m_bwd[:,t+1].reshape(1,D)# this is the unnormalized marginal on y_{t+1,t+2}
         p_2[:,:,t] = p_2[:,:,t]/p_2[:,:,t].sum() #normalized
 
     return (p_1,p_2,logPartition)
@@ -137,7 +135,7 @@ def vectorToParams(vec, K, D):
     gamma = vec[D*D:].reshape(D,K)
     return (theta,gamma)
 
-def learnParameters(x,y,theta_init, gamma_init, K, D):
+def learnParameters(x,y,theta_init, gamma_init, regularization, K, D):
     # x is an L length list of K by T(l) matrices of features
     # y is an L length list of T(l) length arrays of labels
     # theta_init is a D by D array
@@ -145,12 +143,12 @@ def learnParameters(x,y,theta_init, gamma_init, K, D):
 
     def nll(vec):
         theta, gamma = vectorToParams(vec, K, D)
-        return (-1.0) * logLikelihood(x,y,theta,gamma,D)
+        return (-1.0) * (logLikelihood(x,y,theta,gamma,D) - regularization * np.dot(vec,vec))
 
     def ngrad(vec):
         theta, gamma = vectorToParams(vec, K, D)
-        return (-1.0) * gradient(x,y,theta,gamma,K,D)
+        return (-1.0) * (gradient(x,y,theta,gamma,K,D) - 2 * regularization * vec)
 
     vec = opt.fmin_bfgs(nll, paramsToVector(theta_init, gamma_init), ngrad, full_output = True)[0]
-    return vectorToParams(vec)
+    return vectorToParams(vec, K, D)
                   
