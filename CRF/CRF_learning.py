@@ -8,6 +8,7 @@
 
 import numpy as np
 import scipy.optimize as opt
+#import multiprocessing as mp
 
 def suffStats(x,y, K, D):
     # x is an L length list of K by T(l) matrices of features
@@ -60,8 +61,8 @@ def logLikelihood(x,y,theta,gamma, D):
     # gamma is a D by K array
 
     L = len(x)
-    ans = 0
-    for l in range(L):
+    def calculate_term(l):
+        ans = 0
         # theta term
         ymat = np.array([y[l] == i for i in range(D)]) * 1.0
         yt = ymat[:,:-1]
@@ -75,7 +76,13 @@ def logLikelihood(x,y,theta,gamma, D):
         # log partition function
         _, _, logPartition = marginals_and_logPartition(x[l],theta,gamma, D)
         ans = ans - logPartition
-    return ans
+        return ans
+
+#    pool = mp.Pool()
+#   answers = pool.map(calculate_term, range(L))
+    answers = map(calculate_term, range(L))
+    return sum(answers)
+    
 
 def logPhi(t, xl, theta, gamma, D):
     # xl is a K by T matrix of features
@@ -149,6 +156,14 @@ def learnParameters(x,y,theta_init, gamma_init, regularization, K, D):
         theta, gamma = vectorToParams(vec, K, D)
         return (-1.0) * (gradient(x,y,theta,gamma,K,D) - 2 * regularization * vec)
 
-    vec = opt.fmin_bfgs(nll, paramsToVector(theta_init, gamma_init), ngrad, full_output = True)[0]
+    vec = opt.fmin_bfgs(nll, paramsToVector(theta_init, gamma_init), ngrad,
+                        full_output = True, retall = True)[0]
     return vectorToParams(vec, K, D)
-                  
+
+def posteriorMAP(xl, theta, gamma, D):
+    #TODO
+    return 0
+
+def samplePosterior(xl, theta, gamma, D, num_samples):
+    #TODO
+    return 0
