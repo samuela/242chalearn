@@ -9,7 +9,7 @@ import multiprocessing as mp
 # import matplotlib.pyplot as plt
 
 
-train_num_files = 5
+train_num_files = 1
 train_data_files = random.sample(glob(TRAIN_FILE_PATTERN), train_num_files)
 
 validation_num_files = 5
