@@ -69,6 +69,7 @@ def logLikelihood(x, y, theta, gamma, D):
         ans = 0
         # theta term
         ymat = np.array([y[l] == i for i in range(D)]) * 1.0
+        print y, ymat
         yt = ymat[:,:-1]
         ytp1 = ymat[:,1:]
         n_ij = np.dot(yt, ytp1.T)
@@ -162,7 +163,7 @@ def learnParameters(x, y, K, D, regularization=1, theta_init=None, gamma_init=No
         return (-1.0) * (gradient(x, y, theta, gamma, K, D) - 2 * regularization * vec)
 
     results = opt.fmin_l_bfgs_b(nll, paramsToVector(theta_init, gamma_init), ngrad,
-                                full_output=True, iprint=0, epsilon=1e-4)
+                                iprint=0, epsilon=1e-4)
     return vectorToParams(results[0], K, D)
 
 def learnSGD(x, y, theta_init, gamma_init, lamb, K, D):

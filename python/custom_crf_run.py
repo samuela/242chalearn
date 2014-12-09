@@ -9,7 +9,7 @@ import multiprocessing as mp
 # import matplotlib.pyplot as plt
 
 
-train_num_files = 50
+train_num_files = 5
 train_data_files = random.sample(glob(TRAIN_FILE_PATTERN), train_num_files)
 
 validation_num_files = 5
@@ -28,8 +28,10 @@ valid_data = pool.map(_gather, validation_data_files)
 train_xs, train_ys = zip(*train_data)
 valid_xs, valid_ys = zip(*valid_data)
 
-print len(train_xs[0])
+# print len(train_xs[0])
 _, K = train_xs[0].shape
 D = len(allLabels)
+
+print K, D
 
 crf.learnParameters(train_xs, train_ys, K, D)
