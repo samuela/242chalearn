@@ -57,6 +57,8 @@ print '... Building model'
 
 import pycrfsuite
 
+# Changes
+
 trainer = pycrfsuite.Trainer(verbose=True, algorithm='lbfgs')
 for xseq, yseq in train_data:
     trainer.append([dict([(str(k), v) for k, v in enumerate(x)]) for x in xseq],
