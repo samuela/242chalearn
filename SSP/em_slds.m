@@ -1,4 +1,4 @@
-function [ model, x0, P0, ll_iter ] = em_slds(...
+function [ model, x0, P0, ll_iter, var_iter] = em_slds(...
   model_init, x0_init, P0_init, labels, data, max_iters, conv_tol)
 % EM_SLDS - EM for learning the Switching LDS.  This is a heuristic
 %   approximation to the optimal approach.
@@ -12,6 +12,7 @@ function [ model, x0, P0, ll_iter ] = em_slds(...
   iters = 0;
   ll_old = -Inf;
   ll_iter = [];
+  var_iter = [];
   model = model_init;
   x0 = x0_init;
   P0 = P0_init;
@@ -120,6 +121,7 @@ function [ model, x0, P0, ll_iter ] = em_slds(...
     % compute free energy
     ll = compute_slds_bound( num_states, model, data, x0, P0, Eedge, Exx, Xs, Ps );
     ll_iter = [ ll_iter; ll ];
+    var_iter = [var_iter; mean(arrayfun(@(kk)det(model{kk}.R),1:num_states))];
     if iters > 1
       diff = (ll - ll_old)/abs(ll);
       fprintf('\n(Iter #%d) LL: %0.3f, D: %0.3f', iters, ll, diff);
@@ -179,8 +181,13 @@ function [ model, x0, P0, ll_iter ] = em_slds(...
       end
       R_new_T = 1/sum(cell2mat(Nscans{k})) * R_new_T;
       R_new = 0.5 * ( R_new + R_new_T );
-
-
+      
+      
+      % tiny tweak in diagonal
+      eps = 0.0001;%0.0001; 0.01  0.1
+      R_new = R_new + eps*eye(size(R_new));
+      Q_new = Q_new + eps*eye(size(Q_new));
+      
       % update model
       model{k}.A = A_new;
       model{k}.Q = Q_new;
