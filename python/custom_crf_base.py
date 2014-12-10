@@ -8,10 +8,12 @@
 
 import numpy as np
 import scipy.optimize as opt
-from random import sample
-#import multiprocessing as mp
+from random import sample, choice
+
+import multiprocessing as mp
 #from multiprocessing import Pool
 #from multiprocessing.dummy import Pool as ThreadPool
+
 
 def suffStats(x, y, K, D):
     # x is an L length list of K by T(l) matrices of features
@@ -58,6 +60,23 @@ def gradient(x, y, theta, gamma, K, D):
     gamma_es, theta_es = expectedStats(x,theta,gamma, K, D)
     return paramsToVector(theta_ss - theta_es, gamma_ss - gamma_es)
 
+def _calculate_ll_term(args):
+    xs, ys, theta, gamma, D = args
+
+    # theta term
+    ymat = np.array([ys == i for i in range(D)]) * 1.0
+    yt = ymat[:,:-1]
+    ytp1 = ymat[:,1:]
+    n_ij = np.dot(yt, ytp1.T)
+    theta_term = (theta * n_ij).sum()
+    
+    # gamma term
+    gamma_term = (np.dot(ymat, xs.T) * gamma).sum()
+    
+    # log partition function
+    _, _, logPartition = marginals_and_logPartition(xs, theta, gamma, D)
+    return theta_term + gamma_term - logPartition
+
 def logLikelihood(x, y, theta, gamma, D):
     # x is an L length list of K by T(l) matrices of features
     # y is an L length list of T(l) length arrays of labels
@@ -65,24 +84,22 @@ def logLikelihood(x, y, theta, gamma, D):
     # gamma is a D by K array
 
     L = len(x)
-    def calculate_term(l):
-        ans = 0
-        # theta term
-        ymat = np.array([y[l] == i for i in range(D)]) * 1.0
-        yt = ymat[:,:-1]
-        ytp1 = ymat[:,1:]
-        n_ij = np.dot(yt, ytp1.T)
-        theta_term = (theta * n_ij).sum()
+#     def calculate_term(l):
+#         # theta term
+#         ymat = np.array([y[l] == i for i in range(D)]) * 1.0
+#         yt = ymat[:,:-1]
+#         ytp1 = ymat[:,1:]
+#         n_ij = np.dot(yt, ytp1.T)
+#         theta_term = (theta * n_ij).sum()
+# 
+#         # gamma term
+#         gamma_term = (np.dot(ymat, x[l].T) * gamma).sum()
+# 
+#         # log partition function
+#         _, _, logPartition = marginals_and_logPartition(x[l],theta,gamma, D)
+#         return theta_term + gamma_term - logPartition
 
-        # gamma term
-        gamma_term = (np.dot(ymat, x[l].T) * gamma).sum()
-
-        # log partition function
-        _, _, logPartition = marginals_and_logPartition(x[l],theta,gamma, D)
-        return theta_term + gamma_term - logPartition
-
-    return sum(map(calculate_term, range(L)))
-
+    return sum(pool.map(_calculate_ll_term, zip(x, y, [theta] * L, [gamma] * L, [D] * L)))
 
 def logPhi(t, xl, theta, gamma, D):
     # xl is a K by T matrix of features
@@ -142,7 +159,7 @@ def vectorToParams(vec, K, D):
     gamma = vec[D*D:].reshape(D,K)
     return theta, gamma
 
-def learnParameters(x, y, K, D, regularization=1, theta_init=None, gamma_init=None):
+def learnParameters(x, y, K, D, regularization=1, theta_init=None, gamma_init=None, maxiter=100):
     # x is an L length list of K by T(l) matrices of features
     # y is an L length list of T(l) length arrays of labels
     # theta_init is a D by D array
@@ -164,18 +181,40 @@ def learnParameters(x, y, K, D, regularization=1, theta_init=None, gamma_init=No
     def callback(xk):
         print '.'
      
-    results = opt.fmin_l_bfgs_b(nll, paramsToVector(theta_init, gamma_init), ngrad,
-                                iprint=0, epsilon=1e-4, callback=callback)
-    return vectorToParams(results[0], K, D)
+    return opt.fmin_l_bfgs_b(nll, paramsToVector(theta_init, gamma_init), ngrad,
+                             iprint=0, epsilon=1e-4, callback=callback, maxiter=maxiter)
 
-def learnSGD(x, y, theta_init, gamma_init, lamb, K, D):
-    max_iter = 500
-    tol = 1e-4
-    batch_size = 50
+def learnSGD(x, y, K, D, lamb=1, theta_init=None, gamma_init=None, maxiter=500):
+    tol = 1e-2
+    batch_size = 1
 
-    for i in max_iter:
+    last_nll = None
+    step_size = 5 * 1e-7
+
+    if theta_init is None:
+        theta_init = np.random.randn(D, D)
+    if gamma_init is None:
+        gamma_init = np.random.randn(D, K)
+
+    theta, gamma = theta_init, gamma_init
+    
+    for i in xrange(maxiter):
         batch_x, batch_y = zip(*sample(zip(x, y), batch_size))
-        # TODO
+
+#        ix = choice(range(len(x)))
+        vec = paramsToVector(theta, gamma)
+        nll = (-1.0) * (logLikelihood(batch_x, batch_y, theta, gamma, D) - lamb * np.dot(vec,vec))
+        grad = (-1.0) * (gradient(batch_x, batch_y, theta, gamma, K, D) - 2 * lamb * vec)
+        vec -= step_size * grad
+        theta, gamma = vectorToParams(vec, K, D)
+
+        print 'Iter', i, nll, step_size * np.sqrt(np.sum(np.power(grad, 2)))
+
+        if last_nll != None and np.abs(last_nll - nll) < tol:
+            break
+
+        last_nll = nll
+        step_size *= 0.99
 
 def posteriorMAP(xl, theta, gamma, D):
     # xl is a K by T matrix of features
@@ -193,7 +232,7 @@ def posteriorMAP(xl, theta, gamma, D):
     y = np.zeros(T)
     y[T-1] = np.argmax(M[T-1, :])
     for t in range(T-2,-1,-1):
-       y[t] = R[t+1, y[t+1]]
+       y[t] = R[t+1, int(y[t+1])]
     return y
 
 def samplePosterior(xl, theta, gamma, D, num_samples):
@@ -225,3 +264,5 @@ def samplePosterior(xl, theta, gamma, D, num_samples):
 def posteriorMarginalMAP(xl, theta, gamma, D):
     p_1, _, _ = marginals_and_logPartition(xl, theta, gamma, D) #p_1 is a D by T matrix
     return np.argmax(p_1, axis=0)
+
+pool = mp.Pool()
