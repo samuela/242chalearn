@@ -30,7 +30,7 @@ def _gather(fn):
     return gatherAllXY(fn, window_size)
 
 pool = mp.Pool()
-train_data = map(_gather, train_data_files)
+train_data = pool.map(_gather, train_data_files)
 # valid_data = pool.map(_gather, validation_data_files)
 
 train_xs, train_ys = zip(*[(x.T, y) for x, y in train_data])

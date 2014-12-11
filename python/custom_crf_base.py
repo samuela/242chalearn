@@ -262,7 +262,7 @@ def learnParameters(x, y, K, D, lamb=1.0, theta_init=None, gamma_init=None,
         else:
             # print 'Missing'
             # Calculate all in parallel
-            memos[key] = map(_calcMargs,
+            memos[key] = pool.map(_calcMargs,
                                   zip(x, [theta] * L, [gamma] * L, [D] * L))
             return memos[key][l]
 
