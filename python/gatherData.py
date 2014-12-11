@@ -94,9 +94,10 @@ def loadFile(fn):
 def centerToHip(pos):
     return pos - pos[:,0,:].reshape(pos.shape[0], 1, pos.shape[2])
 
-def gatherRandomXY(fn, window_size, samples_per_file):
+def gatherRandomXY(fn, window_size, samples_per_file, onlyGesture=False):
     data = loadFile(fn)
-    pos = data['world_position']
+#    pos = data['world_position']
+    pos = centerToHip(data['world_position'])
     rot = data['world_rotation']
     num_frames = data['num_frames']
     labels = data['frame_labels']
@@ -105,7 +106,10 @@ def gatherRandomXY(fn, window_size, samples_per_file):
     # all_ixs = xrange(window_size, num_frames - window_size)
 
     # Select only those indices corresponding to gestures.
-    all_ixs = window_size + np.where(labels[window_size:num_frames - window_size] > 0)[0]
+    if onlyGesture:
+        all_ixs = window_size + np.where(labels[window_size:num_frames - window_size] > 0)[0]
+    else:
+        all_ixs = window_size + np.where(labels[window_size:num_frames - window_size] >= 0)[0]
 
     X, Y = [], []
     for ix in random.sample(all_ixs, min(samples_per_file, len(all_ixs))):
@@ -115,7 +119,7 @@ def gatherRandomXY(fn, window_size, samples_per_file):
 
     return X, Y
 
-def gatherAllXY(fn, window_size):
+def gatherAllXY(fn, window_size, onlyGesture=False):
     data = loadFile(fn)
 #    pos = data['world_position']
     pos = centerToHip(data['world_position'])
@@ -124,8 +128,10 @@ def gatherAllXY(fn, window_size):
     labels = data['frame_labels']
 
     # Select only those indices corresponding to gestures.
-    # HACK >= instead of > when we wish to include the no gesture frames
-    all_ixs = window_size + np.where(labels[window_size:num_frames - window_size] >= 0)[0]
+    if onlyGesture:
+        all_ixs = window_size + np.where(labels[window_size:num_frames - window_size] > 0)[0]
+    else:
+        all_ixs = window_size + np.where(labels[window_size:num_frames - window_size] >= 0)[0]
 
     X, Y = [], []
     for ix in all_ixs:
@@ -137,7 +143,7 @@ def gatherAllXY(fn, window_size):
 
 def gatherAllXYNoWindow(fn):
     data = loadFile(fn)
-    pos = data['world_position']
+    pos = centerToHip(data['world_position'])
     rot = data['world_rotation']
     labels = data['frame_labels']
 

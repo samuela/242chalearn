@@ -214,7 +214,7 @@ def vectorToParams(vec, K, D):
     gamma = vec[D*D:].reshape(D, K)
     return theta, gamma
 
-def learnParameters(x, y, K, D, lamb=1, theta_init=None, gamma_init=None,
+def learnParameters(x, y, K, D, lamb=1.0, theta_init=None, gamma_init=None,
                     maxiter=100):
     """Learn the model parameters with the L-BFGS algorithm.
 
@@ -282,9 +282,10 @@ def learnParameters(x, y, K, D, lamb=1, theta_init=None, gamma_init=None,
         # Clear the memos dict, so we don't blow up memory.
         memos.clear()
 
-    return opt.fmin_l_bfgs_b(nll, paramsToVector(theta_init, gamma_init), ngrad,
-                             iprint=0, epsilon=1e-4, callback=callback,
-                             maxiter=maxiter)
+    opt_results = opt.fmin_l_bfgs_b(nll, paramsToVector(theta_init, gamma_init), ngrad,
+                                    iprint=0, epsilon=1e-3, callback=callback,
+                                    maxiter=maxiter)
+    return opt_results, ll_per_iter
 
 def learnSGD(x, y, K, D, lamb=1, theta_init=None, gamma_init=None, maxiter=500):
     tol = 1e-2
