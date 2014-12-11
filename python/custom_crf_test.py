@@ -5,16 +5,16 @@ from random import choice
 
 def bruteLogProb(ys, xl, theta, gamma):
     logprob = 0
-    for t in range(T-1):
-        logprob = logprob + theta[ys[t], ys[t+1]]
+    for t in range(T - 1):
+        logprob += theta[ys[t], ys[t+1]]
     for t in range(T):
         for k in range(K):
-            logprob = logprob + gamma[ys[t], k] * xl[k, t]
+            logprob += gamma[ys[t], k] * xl[k, t]
     return logprob
 
 def brute_force_marg_logpart(xl, theta, gamma):
     joint_states = [(ys, bruteLogProb(ys, xl, theta, gamma))
-                    for ys in it.product(range(D), repeat = T)]
+                    for ys in it.product(range(D), repeat=T)]
     logPartition = np.log(np.sum([np.exp(lp) for ys, lp in joint_states]))
     
     bfp_1 = np.zeros([D, T])
@@ -55,7 +55,7 @@ T = 3
 xl = np.random.randn(K*T).reshape(K,T)
 theta = np.random.randn(D,D)
 gamma = np.random.randn(D, K)
-dpp_1, dpp_2, dplogPartition = marginals_and_logPartition(xl, theta, gamma, D)
+dpp_1, dpp_2, dplogPartition = calcMargsAndLogZ(xl, theta, gamma, D)
 bfp_1, bfp_2, brutelogPartition = brute_force_marg_logpart(xl, theta,gamma)
 print "marginals ", (np.abs(dpp_2 - bfp_2)).sum() + (np.abs(dpp_1 - bfp_1)).sum() + np.abs(dplogPartition - brutelogPartition)
 
@@ -64,7 +64,7 @@ K = 3
 D = 3
 T = 3
 L = 5
-x = [np.random.randn(K*T).reshape(K,T) for l in range(L)]
+x = [np.random.randn(K * T).reshape(K, T) for l in range(L)]
 y = [np.array([choice(range(D)) for t in range(T)]) for l in range(L)]
 theta = np.random.randn(D,D)
 gamma = np.random.randn(D, K)
@@ -77,25 +77,25 @@ K = 10
 D = 10
 T = 10
 L = 10
-x = [np.random.randn(K*T).reshape(K,T) for l in range(L)]
+x = [np.random.randn(K * T).reshape(K, T) for l in range(L)]
 y = [np.array([choice(range(D)) for t in range(T)]) for l in range(L)]
-theta = np.random.randn(D,D)
+theta = np.random.randn(D, D)
 gamma = np.random.randn(D, K)
-learned_theta, learned_gamma = learnParameters(x,y,K,D)
+learned_theta, learned_gamma = learnParameters(x, y, K, D)
 print learned_theta, "\n"
 print learned_gamma
 
-
 # Test posteriorMAP
-K = 5
-D = 5
-T = 5
-xl = np.random.randn(K*T).reshape(K,T)
-theta = np.random.randn(D,D)
-gamma = np.random.randn(D, K)
-brute_map = brute_posteriorMAP(xl, theta, gamma)
-dp_map = posteriorMAP(xl, theta, gamma, D)
-print dp_map
-print brute_map
+for _ in range(100):
+    K = 5
+    D = 5
+    T = 5
+    xl = np.random.randn(K * T).reshape(K, T)
+    theta = np.random.randn(D, D)
+    gamma = np.random.randn(D, K)
+    brute_map = brute_posteriorMAP(xl, theta, gamma)
+    dp_map = posteriorMAP(xl, theta, gamma, D)
+    print dp_map
+    print brute_map
 
-print samplePosterior(xl,theta,gamma,D,10)
+print samplePosterior(xl, theta, gamma, D, 10)

@@ -26,7 +26,7 @@ def suffStats(x, y, K, D):
     L = len(x)
     gamma_ss = np.zeros([D,K])
     theta_ss = np.zeros([D,D])
-    for l in range(L):
+    for l in xrange(L):
         # first suff stat for gamma
         ymat = np.array([y[l] == i for i in range(D)]) * 1.0
         gamma_ss += np.dot(ymat, x[l].T)
@@ -56,7 +56,7 @@ def expectedStats(x, theta, gamma, K, D, calcMarginals=None):
     L = len(x)
     gamma_es = np.zeros([D,K])
     theta_es = np.zeros([D,D])
-    for l in range(L):
+    for l in xrange(L):
         # p_1 is a D by T(l) array of single y marignals
         # p_2 is a D by D by T(l)-1 array of y pair marginals
         if calcMarginals:
@@ -109,7 +109,7 @@ def logLikelihood(x, y, theta, gamma, D, calcMarginals=None):
     """
     L = len(x)
     ll = 0
-    for l in range(L):
+    for l in xrange(L):
         # theta term
         ymat = np.array([y[l] == i for i in range(D)]) * 1.0
         yt = ymat[:,:-1]
@@ -164,33 +164,39 @@ def calcMargsAndLogZ(xl, theta, gamma, D):
         logPartition : log(Z)
     """
     _, T = xl.shape
+
+    logPhi = theta.reshape(D, D, 1) + np.dot(gamma, xl).reshape(1, D, T)
+    logPhi[1] += np.dot(gamma, xl[:, 0]).reshape(D, 1)
+
     m_fwd = np.ones([D, T]) # forward messages. First column is just ones
     # m_fwd[:,t] = m_{t,t+1}
-    log_sums = np.zeros(T) # logs of the normalization constants
-    for t in range(1, T):
-        lp = logPhi(t, xl, theta, gamma, D) # exp sum log trick
+    logPartition = 0 # log partition function
+    for t in xrange(1, T):
+        # lp = logPhi(t, xl, theta, gamma, D) # exp sum log trick
+        lp = logPhi[:,:,t]
         max_val = np.max(lp)
         unnormalized_message = np.dot(np.exp(lp - max_val).T, m_fwd[:, t-1])
         sum_t = sum(unnormalized_message)
         m_fwd[:,t] = unnormalized_message / sum_t
-        log_sums[t] = np.log(sum_t) + max_val
+        logPartition += np.log(sum_t) + max_val
 
     m_bwd = np.ones([D, T]) # backward messages. Last column is just ones
     # m_bwd[:,t] = m_{t+2,t+1}
-    for t in range(T - 2, -1, -1): #T-2,T-3,...,0
-        lp = logPhi(t+1, xl, theta, gamma, D) # exp sum log trick
+    for t in xrange(T - 2, -1, -1): #T-2,T-3,...,0
+        # lp = logPhi(t+1, xl, theta, gamma, D) # exp sum log trick
+        lp = logPhi[:,:,t+1]
         max_val = np.max(lp)
         unnormalized_message = np.dot(np.exp(lp-max_val), m_bwd[:, t+1])
         m_bwd[:,t] = unnormalized_message / sum(unnormalized_message)
 
-    logPartition = np.sum(log_sums) # log partition function
     p_1 = m_fwd * m_bwd # single node marginals unnormalized
     p_1 = p_1 / p_1.sum(axis=0) # normalized
 
     #now pairwise marginals
     p_2 = np.zeros([D, D, T - 1])
-    for t in range(T - 1):
-        lp = logPhi(t + 1, xl, theta, gamma, D) # exp sum log trick
+    for t in xrange(T - 1):
+        # lp = logPhi(t + 1, xl, theta, gamma, D) # exp sum log trick
+        lp = logPhi[:,:,t+1]
         max_val = np.max(lp)
         # this is the unnormalized marginal on y_{t+1,t+2}
         p_2[:,:,t] = np.exp(lp-max_val) * m_fwd[:,t].reshape(D, 1) \
@@ -256,7 +262,7 @@ def learnParameters(x, y, K, D, lamb=1.0, theta_init=None, gamma_init=None,
         else:
             # print 'Missing'
             # Calculate all in parallel
-            memos[key] = pool.map(_calcMargs,
+            memos[key] = map(_calcMargs,
                                   zip(x, [theta] * L, [gamma] * L, [D] * L))
             return memos[key][l]
 

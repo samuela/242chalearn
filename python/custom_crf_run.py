@@ -17,9 +17,9 @@ window_size = 15
 maxiter = 500
 lamb = 1.0
 
-# train_num_files = 10
-# train_data_files = random.sample(glob(TRAIN_FILE_PATTERN), train_num_files)
-train_data_files = glob(TRAIN_FILE_PATTERN)
+train_num_files = 10
+train_data_files = random.sample(glob(TRAIN_FILE_PATTERN), train_num_files)
+# train_data_files = glob(TRAIN_FILE_PATTERN)
 
 # validation_num_files = 10
 # validation_data_files = random.sample(glob(VALID_FILE_PATTERN), validation_num_files)
@@ -30,7 +30,7 @@ def _gather(fn):
     return gatherAllXY(fn, window_size)
 
 pool = mp.Pool()
-train_data = pool.map(_gather, train_data_files)
+train_data = map(_gather, train_data_files)
 # valid_data = pool.map(_gather, validation_data_files)
 
 train_xs, train_ys = zip(*[(x.T, y) for x, y in train_data])
