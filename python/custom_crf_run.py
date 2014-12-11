@@ -31,13 +31,12 @@ valid_data = pool.map(_gather, validation_data_files)
 train_xs, train_ys = zip(*[(x.T, y) for x, y in train_data])
 valid_xs, valid_ys = zip(*[(x.T, y) for x, y in valid_data])
 
-# print len(train_xs[0])
 K, _ = train_xs[0].shape
 D = len(allLabels)
 
 print '... Training model'
 params, nll, d = crf.learnParameters(train_xs, train_ys, K, D, maxiter=150)
-#crf.learnSGD(train_xs, train_ys, K, D, maxiter=250)
+# crf.learnSGD(train_xs, train_ys, K, D, maxiter=250)
 
 theta, gamma = crf.vectorToParams(params, K, D)
 

@@ -1,24 +1,28 @@
-# We will calculate the log likelihood and gradient of the log likelihood for
-# any given parameters theta and gamma and training exampes (x,y)
+import numpy as np
+import scipy.optimize as opt
+from random import sample, choice
+
+import multiprocessing as mp
+
 
 # "Global" variables
 # L is number of training examples
 # K is number of features
 # D is number of labels
 
-import numpy as np
-import scipy.optimize as opt
-from random import sample, choice
-
-import multiprocessing as mp
-#from multiprocessing import Pool
-#from multiprocessing.dummy import Pool as ThreadPool
-
-
 def suffStats(x, y, K, D):
-    # x is an L length list of K by T(l) matrices of features
-    # y is an L length list of T(l) length arrays of labels
+    """Calculate the sufficient statistics of the data x, y.
 
+    Args:
+        x : an L length list of K x T(l) matrices of features
+        y : an L length list of T(l) length arrays of labels
+
+    Returns:
+        theta_ss : a D x D matrix of sufficient statistics for the theta
+            parameters.
+        gamma_ss : a D x K matrix of sufficient statistics for the gamma
+            parameters.
+    """
     L = len(x)
     gamma_ss = np.zeros([D,K])
     theta_ss = np.zeros([D,D])
@@ -35,10 +39,20 @@ def suffStats(x, y, K, D):
     return theta_ss, gamma_ss
 
 def expectedStats(x, theta, gamma, K, D, calcMarginals=None):
-    # x is an L length list of K by T(l) matrices of features
-    # theta is a D by D array
-    # gamma is a D by K array
+    """Calculate the expected statistics of the data x under the parameters
+    theta and gamma.
 
+    Args:
+        x : an L length list of K x T(l) matrices of features.
+        theta : D x D matrix of the theta parameters.
+        gamma : D x K matrix of the gamma parameters.
+
+    Returns:
+        theta_es : a D x D matrix of expected statistics for the theta
+            parameters under the current parameters.
+        gamma_ss : a D x K matrix of expected statistics for the gamma
+            parameters under the current parameters.
+    """
     L = len(x)
     gamma_es = np.zeros([D,K])
     theta_es = np.zeros([D,D])
@@ -48,7 +62,7 @@ def expectedStats(x, theta, gamma, K, D, calcMarginals=None):
         if calcMarginals:
             p_1, p_2, _ = calcMarginals(l, theta, gamma)
         else:
-            p_1, p_2, _ = marginals_and_logPartition(x[l], theta, gamma, D)
+            p_1, p_2, _ = calcMargsAndLogZ(x[l], theta, gamma, D)
 
         # first stats for gamma
         gamma_es += np.dot(p_1, x[l].T)
@@ -58,39 +72,41 @@ def expectedStats(x, theta, gamma, K, D, calcMarginals=None):
     return theta_es, gamma_es
 
 def gradient(x, y, theta, gamma, K, D, calcMarginals=None):
-    # x is an L length list of K by T(l) matrices of features
-    # y is an L length list of T(l) length arrays of labels
-    # theta is a D by D array
-    # gamma is a D by K array
+    """Computes the gradient of the log-likelihood.
 
+    Args:
+        x : an L length list of K x T(l) matrices of features.
+        y : an L length list of T(l) length arrays of labels.
+        theta : D x D matrix of the theta parameters.
+        gamma : D x K matrix of the gamma parameters.
+        K : the number of features.
+        D : the number of latent labels.
+        calcMarginals : function to calculate the single/pair-node marginal
+            distributions and the log partition. Defaults to calcMargsAndLogZ.
+
+    Returns:
+        A combined gradient vector of size D * D + D * K.
+    """
     theta_ss, gamma_ss = suffStats(x,y, K, D)
     theta_es, gamma_es = expectedStats(x, theta, gamma, K, D, calcMarginals)
     return paramsToVector(theta_ss - theta_es, gamma_ss - gamma_es)
 
-# OLD
-def _calc_ll_term(args):
-    xs, ys, theta, gamma, D = args
-
-    # theta term
-    ymat = np.array([ys == i for i in range(D)]) * 1.0
-    yt = ymat[:,:-1]
-    ytp1 = ymat[:,1:]
-    n_ij = np.dot(yt, ytp1.T)
-    theta_term = (theta * n_ij).sum()
-    
-    # gamma term
-    gamma_term = (np.dot(ymat, xs.T) * gamma).sum()
-    
-    # log partition function
-    _, _, logPartition = marginals_and_logPartition(xs, theta, gamma, D)
-    return theta_term + gamma_term - logPartition
-
 def logLikelihood(x, y, theta, gamma, D, calcMarginals=None):
-    # x is an L length list of K by T(l) matrices of features
-    # y is an L length list of T(l) length arrays of labels
-    # theta is a D by D array
-    # gamma is a D by K array
+    """Calculate the log-likelihood of the data x, y under the model parameters
+    theta and gamma.
 
+    Args:
+        x : an L length list of K x T(l) matrices of features.
+        y : an L length list of T(l) length arrays of labels.
+        theta : D x D matrix of the theta parameters.
+        gamma : D x K matrix of the gamma parameters.
+        D : the number of latent labels.
+        calcMarginals : function to calculate the single/pair-node marginal
+            distributions and the log partition. Defaults to calcMargsAndLogZ.
+
+    Returns:
+        The log-likelihood.
+    """
     L = len(x)
     ll = 0
     for l in range(L):
@@ -108,42 +124,58 @@ def logLikelihood(x, y, theta, gamma, D, calcMarginals=None):
         if calcMarginals:
             _, _, logPartition = calcMarginals(l, theta, gamma)
         else:
-            _, _, logPartition = marginals_and_logPartition(x[l], theta, gamma, D)
+            _, _, logPartition = calcMargsAndLogZ(x[l], theta, gamma, D)
 
         ll += theta_term + gamma_term - logPartition
 
     return ll
-#    return sum(map(_calc_ll_term, zip(x, y, [theta] * L, [gamma] * L, [D] * L)))
 
 def logPhi(t, xl, theta, gamma, D):
-    # xl is a K by T matrix of features
-    # t is an integer between 1 and T
-    # theta is a D by D array
-    # gamma is a D by K array
-    # returns a matrix A such that A[i,j] = phi(y_t = i, y_{t+1} = j)
+    """Calculate a clique function potential under the given model parameters.
+
+    Args:
+        xl : a K by T matrix of features.
+        t : an integer between 1 and T.
+        theta : D x D matrix of the theta parameters.
+        gamma : D x K matrix of the gamma parameters.
+        D : the number of latent labels.
+
+    Returns:
+        Matrix A such that A[i,j] = phi(y_t = i, y_{t+1} = j).
+    """
     if t == 1:
-        return theta + np.dot(gamma, xl[:, 0]).reshape(D, 1) + np.dot(gamma, xl[:,1]).reshape(1, D)
+        return theta + np.dot(gamma, xl[:, 0]).reshape(D, 1) \
+                     + np.dot(gamma, xl[:,1]).reshape(1, D)
     else:
         return theta + np.dot(gamma, xl[:, t]).reshape(1, D)
 
-def marginals_and_logPartition(xl, theta, gamma, D):
-    # xl is a K by T matrix of features
-    # theta is a D by D array
-    # gamma is a D by K array
+def calcMargsAndLogZ(xl, theta, gamma, D):
+    """Calculate the single/pair-node marginals and the log partition under the
+    given model parameters. Requires that len(xl) > 1.
 
+    Args:
+        xl : a K by T matrix of features.
+        theta : D x D matrix of the theta parameters.
+        gamma : D x K matrix of the gamma parameters.
+
+    Returns:
+        p_1 : D x T array of signle-node marginals.
+        p_2 : D x D x (T-1) array of node-pair marginals.
+        logPartition : log(Z)
+    """
     _, T = xl.shape
-    m_fwd = np.ones([D, T]) #forward messages. First column is just ones
+    m_fwd = np.ones([D, T]) # forward messages. First column is just ones
     # m_fwd[:,t] = m_{t,t+1}
-    log_sums = np.zeros(T) #logs of the normalization constants
-    for t in range(1,T):
+    log_sums = np.zeros(T) # logs of the normalization constants
+    for t in range(1, T):
         lp = logPhi(t, xl, theta, gamma, D) # exp sum log trick
         max_val = np.max(lp)
-        unnormalized_message = np.dot(np.exp(lp-max_val).T, m_fwd[:, t-1])
+        unnormalized_message = np.dot(np.exp(lp - max_val).T, m_fwd[:, t-1])
         sum_t = sum(unnormalized_message)
         m_fwd[:,t] = unnormalized_message / sum_t
         log_sums[t] = np.log(sum_t) + max_val
 
-    m_bwd = np.ones([D, T]) #backward messages. Last column is just ones
+    m_bwd = np.ones([D, T]) # backward messages. Last column is just ones
     # m_bwd[:,t] = m_{t+2,t+1}
     for t in range(T - 2, -1, -1): #T-2,T-3,...,0
         lp = logPhi(t+1, xl, theta, gamma, D) # exp sum log trick
@@ -151,46 +183,70 @@ def marginals_and_logPartition(xl, theta, gamma, D):
         unnormalized_message = np.dot(np.exp(lp-max_val), m_bwd[:, t+1])
         m_bwd[:,t] = unnormalized_message / sum(unnormalized_message)
 
-    logPartition = np.sum(log_sums) #log partition function
-    p_1 = m_fwd * m_bwd #single node marginals unnormalized
-    p_1 = p_1 / p_1.sum(axis=0) #normalized
+    logPartition = np.sum(log_sums) # log partition function
+    p_1 = m_fwd * m_bwd # single node marginals unnormalized
+    p_1 = p_1 / p_1.sum(axis=0) # normalized
 
     #now pairwise marginals
-    p_2 = np.zeros([D, D, T-1])
-    for t in range(T-1):
-        lp = logPhi(t+1, xl, theta, gamma, D) # exp sum log trick
+    p_2 = np.zeros([D, D, T - 1])
+    for t in range(T - 1):
+        lp = logPhi(t + 1, xl, theta, gamma, D) # exp sum log trick
         max_val = np.max(lp)
-        p_2[:,:,t] = np.exp(lp-max_val) * m_fwd[:,t].reshape(D,1) * m_bwd[:,t+1].reshape(1,D)# this is the unnormalized marginal on y_{t+1,t+2}
-        p_2[:,:,t] = p_2[:,:,t] / p_2[:,:,t].sum() #normalized
+        # this is the unnormalized marginal on y_{t+1,t+2}
+        p_2[:,:,t] = np.exp(lp-max_val) * m_fwd[:,t].reshape(D, 1) \
+                                        * m_bwd[:,t+1].reshape(1, D)
+        p_2[:,:,t] = p_2[:,:,t] / p_2[:,:,t].sum() # normalized
 
     return p_1, p_2, logPartition
 
 def _calcMargs(args):
-    return marginals_and_logPartition(*args)
+    """Wrapper for calcMargsAndLogZ required by pool.map()."""
+    return calcMargsAndLogZ(*args)
 
 def paramsToVector(theta, gamma):
+    """Converts the theta, gamma parameter matrices into a vector for the
+    optimization algorithm."""
     return np.concatenate((theta.ravel(), gamma.ravel()))
 
 def vectorToParams(vec, K, D):
+    """Recovers the theta, gamma parameter matrices from vector form."""
     theta = vec[:D*D].reshape(D, D)
     gamma = vec[D*D:].reshape(D, K)
     return theta, gamma
 
-def learnParameters(x, y, K, D, lamb=1, theta_init=None, gamma_init=None, maxiter=100):
-    # x is an L length list of K by T(l) matrices of features
-    # y is an L length list of T(l) length arrays of labels
-    # theta_init is a D by D array
-    # gamma_init is a D by K array
+def learnParameters(x, y, K, D, lamb=1, theta_init=None, gamma_init=None,
+                    maxiter=100):
+    """Learn the model parameters with the L-BFGS algorithm.
+
+    Args:
+        x : an L length list of K x T(l) matrices of features.
+        y : an L length list of T(l) length arrays of labels.
+        theta : D x D matrix of the theta parameters.
+        gamma : D x K matrix of the gamma parameters.
+        K : the number of features.
+        D : the number of latent labels.
+        lamb : the L2 loss penalty.
+        theta_init : the initial guess at the theta parameters. Defaults to
+            values sampled from a standard normal.
+        gamma_init : the initial guess at the gamma parameters. Defaults to
+            values sampled from a standard normal.
+        maxiter : the maximum number of iterations to run.
+
+    Returns:
+        Who knows right now.
+    """
+    L = len(x)
 
     if theta_init is None:
         theta_init = np.random.randn(D, D)
     if gamma_init is None:
         gamma_init = np.random.randn(D, K)
 
-    L = len(x)
-
     # memos is a dict mapping (theta, gamma) -> [(p_1, p_2, logZ), ...]
-    # When calcMarginals is called, it first checks whether the theta, gamma
+    # When calcMarginals is called, it first checks whether the calculation has
+    # already been performed for the given theta, gamma parameters. If so, it
+    # returns the cached values. Otherwise, we calculate the marginals and log
+    # partition values over all sequences in parallel.
     memos = {}
     def calcMarginals(l, theta, gamma):
         key = (hash(theta.tostring()), hash(gamma.tostring()))
@@ -200,7 +256,8 @@ def learnParameters(x, y, K, D, lamb=1, theta_init=None, gamma_init=None, maxite
         else:
             # print 'Missing'
             # Calculate all in parallel
-            memos[key] = pool.map(_calcMargs, zip(x, [theta] * L, [gamma] * L, [D] * L))
+            memos[key] = pool.map(_calcMargs,
+                                  zip(x, [theta] * L, [gamma] * L, [D] * L))
             return memos[key][l]
 
     def nll(vec):
@@ -216,20 +273,18 @@ def learnParameters(x, y, K, D, lamb=1, theta_init=None, gamma_init=None, maxite
     ll_per_iter = []
     def callback(vec):
         theta, gamma = vectorToParams(vec, K, D)
-        ll = logLikelihood(x, y, theta, gamma, D)
+        ll = logLikelihood(x, y, theta, gamma, D, calcMarginals)
         ll_per_iter.append(ll)
         print 'Iter', len(ll_per_iter), '\t',
         print 'LL:', ll, '\t',
         print 'Reg. Loss:', lamb * np.dot(vec, vec)
 
-        # Clear the memos dict, so we don't blow up memory
+        # Clear the memos dict, so we don't blow up memory.
         memos.clear()
-     
-    return opt.fmin_l_bfgs_b(nll, paramsToVector(theta_init, gamma_init), ngrad,
-                             iprint=0, epsilon=1e-4, callback=callback, maxiter=maxiter)
 
-# def learnCVXOPT(x, y, K, D, lamb=1, theta_init=None, gamma_init=None, maxiter=100):
-#     pass
+    return opt.fmin_l_bfgs_b(nll, paramsToVector(theta_init, gamma_init), ngrad,
+                             iprint=0, epsilon=1e-4, callback=callback,
+                             maxiter=maxiter)
 
 def learnSGD(x, y, K, D, lamb=1, theta_init=None, gamma_init=None, maxiter=500):
     tol = 1e-2
@@ -244,7 +299,7 @@ def learnSGD(x, y, K, D, lamb=1, theta_init=None, gamma_init=None, maxiter=500):
         gamma_init = np.random.randn(D, K)
 
     theta, gamma = theta_init, gamma_init
-    
+
     for i in xrange(maxiter):
         batch_x, batch_y = zip(*sample(zip(x, y), batch_size))
 
@@ -309,7 +364,7 @@ def samplePosterior(xl, theta, gamma, D, num_samples):
     return samples
 
 def posteriorMarginalMAP(xl, theta, gamma, D):
-    p_1, _, _ = marginals_and_logPartition(xl, theta, gamma, D) #p_1 is a D by T matrix
+    p_1, _, _ = calcMargsAndLogZ(xl, theta, gamma, D) #p_1 is a D by T matrix
     return np.argmax(p_1, axis=0)
 
 pool = mp.Pool()
