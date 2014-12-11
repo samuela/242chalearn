@@ -15,7 +15,7 @@ from sklearn.metrics import confusion_matrix
 train_num_files = 10
 train_data_files = random.sample(glob(TRAIN_FILE_PATTERN), train_num_files)
 
-validation_num_files = 64
+validation_num_files = 10
 validation_data_files = random.sample(glob(VALID_FILE_PATTERN), validation_num_files)
 
 print '... Gathering data'
@@ -36,7 +36,7 @@ K, _ = train_xs[0].shape
 D = len(allLabels)
 
 print '... Training model'
-params, nll, d = crf.learnParameters(train_xs, train_ys, K, D, maxiter=50)
+params, nll, d = crf.learnParameters(train_xs, train_ys, K, D, maxiter=150)
 #crf.learnSGD(train_xs, train_ys, K, D, maxiter=250)
 
 theta, gamma = crf.vectorToParams(params, K, D)

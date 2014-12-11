@@ -32,9 +32,9 @@ def suffStats(x, y, K, D):
         ytp1 = ymat[:,1:]
         theta_ss += np.dot(yt , ytp1.T)
 
-    return gamma_ss, theta_ss
+    return theta_ss, gamma_ss
 
-def expectedStats(x, theta, gamma, K, D):
+def expectedStats(x, theta, gamma, K, D, calcMarginals=None):
     # x is an L length list of K by T(l) matrices of features
     # theta is a D by D array
     # gamma is a D by K array
@@ -43,24 +43,32 @@ def expectedStats(x, theta, gamma, K, D):
     gamma_es = np.zeros([D,K])
     theta_es = np.zeros([D,D])
     for l in range(L):
-        p_1, p_2, _ = marginals_and_logPartition(x[l], theta, gamma, D) #p_1 is a D by T(l) array of single y marignals, p_2 is a D by D by T(l)-1 array of y pair marginals
-        # first stats for gamma
-        gamma_es = gamma_es + np.dot(p_1, x[l].T)
-        # next for theta
-        theta_es = theta_es + np.sum(p_2, axis=2)
-    return (gamma_es, theta_es)
+        # p_1 is a D by T(l) array of single y marignals
+        # p_2 is a D by D by T(l)-1 array of y pair marginals
+        if calcMarginals:
+            p_1, p_2, _ = calcMarginals(l, theta, gamma)
+        else:
+            p_1, p_2, _ = marginals_and_logPartition(x[l], theta, gamma, D)
 
-def gradient(x, y, theta, gamma, K, D):
+        # first stats for gamma
+        gamma_es += np.dot(p_1, x[l].T)
+        # next for theta
+        theta_es += np.sum(p_2, axis=2)
+
+    return theta_es, gamma_es
+
+def gradient(x, y, theta, gamma, K, D, calcMarginals=None):
     # x is an L length list of K by T(l) matrices of features
     # y is an L length list of T(l) length arrays of labels
     # theta is a D by D array
     # gamma is a D by K array
 
-    gamma_ss, theta_ss = suffStats(x,y, K, D)
-    gamma_es, theta_es = expectedStats(x,theta,gamma, K, D)
+    theta_ss, gamma_ss = suffStats(x,y, K, D)
+    theta_es, gamma_es = expectedStats(x, theta, gamma, K, D, calcMarginals)
     return paramsToVector(theta_ss - theta_es, gamma_ss - gamma_es)
 
-def _calculate_ll_term(args):
+# OLD
+def _calc_ll_term(args):
     xs, ys, theta, gamma, D = args
 
     # theta term
@@ -77,29 +85,35 @@ def _calculate_ll_term(args):
     _, _, logPartition = marginals_and_logPartition(xs, theta, gamma, D)
     return theta_term + gamma_term - logPartition
 
-def logLikelihood(x, y, theta, gamma, D):
+def logLikelihood(x, y, theta, gamma, D, calcMarginals=None):
     # x is an L length list of K by T(l) matrices of features
     # y is an L length list of T(l) length arrays of labels
     # theta is a D by D array
     # gamma is a D by K array
 
     L = len(x)
-#     def calculate_term(l):
-#         # theta term
-#         ymat = np.array([y[l] == i for i in range(D)]) * 1.0
-#         yt = ymat[:,:-1]
-#         ytp1 = ymat[:,1:]
-#         n_ij = np.dot(yt, ytp1.T)
-#         theta_term = (theta * n_ij).sum()
-# 
-#         # gamma term
-#         gamma_term = (np.dot(ymat, x[l].T) * gamma).sum()
-# 
-#         # log partition function
-#         _, _, logPartition = marginals_and_logPartition(x[l],theta,gamma, D)
-#         return theta_term + gamma_term - logPartition
+    ll = 0
+    for l in range(L):
+        # theta term
+        ymat = np.array([y[l] == i for i in range(D)]) * 1.0
+        yt = ymat[:,:-1]
+        ytp1 = ymat[:,1:]
+        n_ij = np.dot(yt, ytp1.T)
+        theta_term = (theta * n_ij).sum()
 
-    return sum(pool.map(_calculate_ll_term, zip(x, y, [theta] * L, [gamma] * L, [D] * L)))
+        # gamma term
+        gamma_term = (np.dot(ymat, x[l].T) * gamma).sum()
+
+        # log partition function
+        if calcMarginals:
+            _, _, logPartition = calcMarginals(l, theta, gamma)
+        else:
+            _, _, logPartition = marginals_and_logPartition(x[l], theta, gamma, D)
+
+        ll += theta_term + gamma_term - logPartition
+
+    return ll
+#    return sum(map(_calc_ll_term, zip(x, y, [theta] * L, [gamma] * L, [D] * L)))
 
 def logPhi(t, xl, theta, gamma, D):
     # xl is a K by T matrix of features
@@ -107,10 +121,10 @@ def logPhi(t, xl, theta, gamma, D):
     # theta is a D by D array
     # gamma is a D by K array
     # returns a matrix A such that A[i,j] = phi(y_t = i, y_{t+1} = j)
-    if (t == 1):
-        return theta + np.dot(gamma, xl[:, 0]).reshape(D,1) + np.dot(gamma, xl[:,1]).reshape(1,D)
+    if t == 1:
+        return theta + np.dot(gamma, xl[:, 0]).reshape(D, 1) + np.dot(gamma, xl[:,1]).reshape(1, D)
     else:
-        return theta + np.dot(gamma, xl[:, t]).reshape(1,D)
+        return theta + np.dot(gamma, xl[:, t]).reshape(1, D)
 
 def marginals_and_logPartition(xl, theta, gamma, D):
     # xl is a K by T matrix of features
@@ -151,15 +165,18 @@ def marginals_and_logPartition(xl, theta, gamma, D):
 
     return p_1, p_2, logPartition
 
+def _calcMargs(args):
+    return marginals_and_logPartition(*args)
+
 def paramsToVector(theta, gamma):
     return np.concatenate((theta.ravel(), gamma.ravel()))
 
 def vectorToParams(vec, K, D):
-    theta = vec[:D*D].reshape(D,D)
-    gamma = vec[D*D:].reshape(D,K)
+    theta = vec[:D*D].reshape(D, D)
+    gamma = vec[D*D:].reshape(D, K)
     return theta, gamma
 
-def learnParameters(x, y, K, D, regularization=1, theta_init=None, gamma_init=None, maxiter=100):
+def learnParameters(x, y, K, D, lamb=1, theta_init=None, gamma_init=None, maxiter=100):
     # x is an L length list of K by T(l) matrices of features
     # y is an L length list of T(l) length arrays of labels
     # theta_init is a D by D array
@@ -170,19 +187,49 @@ def learnParameters(x, y, K, D, regularization=1, theta_init=None, gamma_init=No
     if gamma_init is None:
         gamma_init = np.random.randn(D, K)
 
+    L = len(x)
+
+    # memos is a dict mapping (theta, gamma) -> [(p_1, p_2, logZ), ...]
+    # When calcMarginals is called, it first checks whether the theta, gamma
+    memos = {}
+    def calcMarginals(l, theta, gamma):
+        key = (hash(theta.tostring()), hash(gamma.tostring()))
+        if key in memos:
+            # print 'Cached!'
+            return memos[key][l]
+        else:
+            # print 'Missing'
+            # Calculate all in parallel
+            memos[key] = pool.map(_calcMargs, zip(x, [theta] * L, [gamma] * L, [D] * L))
+            return memos[key][l]
+
     def nll(vec):
         theta, gamma = vectorToParams(vec, K, D)
-        return (-1.0) * (logLikelihood(x, y, theta, gamma, D) - regularization * np.dot(vec,vec))
+        return (-1.0) * (logLikelihood(x, y, theta, gamma, D, calcMarginals)
+                         - lamb * np.dot(vec, vec))
 
     def ngrad(vec):
         theta, gamma = vectorToParams(vec, K, D)
-        return (-1.0) * (gradient(x, y, theta, gamma, K, D) - 2 * regularization * vec)
+        return (-1.0) * (gradient(x, y, theta, gamma, K, D, calcMarginals)
+                         - 2 * lamb * vec)
 
-    def callback(xk):
-        print '.'
+    ll_per_iter = []
+    def callback(vec):
+        theta, gamma = vectorToParams(vec, K, D)
+        ll = logLikelihood(x, y, theta, gamma, D)
+        ll_per_iter.append(ll)
+        print 'Iter', len(ll_per_iter), '\t',
+        print 'LL:', ll, '\t',
+        print 'Reg. Loss:', lamb * np.dot(vec, vec)
+
+        # Clear the memos dict, so we don't blow up memory
+        memos.clear()
      
     return opt.fmin_l_bfgs_b(nll, paramsToVector(theta_init, gamma_init), ngrad,
                              iprint=0, epsilon=1e-4, callback=callback, maxiter=maxiter)
+
+# def learnCVXOPT(x, y, K, D, lamb=1, theta_init=None, gamma_init=None, maxiter=100):
+#     pass
 
 def learnSGD(x, y, K, D, lamb=1, theta_init=None, gamma_init=None, maxiter=500):
     tol = 1e-2
