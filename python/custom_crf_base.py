@@ -3,6 +3,7 @@ import scipy.optimize as opt
 from random import sample, choice
 
 import multiprocessing as mp
+import time
 
 
 # "Global" variables
@@ -177,6 +178,9 @@ def calcMargsAndLogZ(xl, theta, gamma, D):
         max_val = np.max(lp)
         unnormalized_message = np.dot(np.exp(lp - max_val).T, m_fwd[:, t-1])
         sum_t = sum(unnormalized_message)
+        if sum_t == 0:
+            print lp
+
         m_fwd[:,t] = unnormalized_message / sum_t
         logPartition += np.log(sum_t) + max_val
 
@@ -186,7 +190,7 @@ def calcMargsAndLogZ(xl, theta, gamma, D):
         # lp = logPhi(t+1, xl, theta, gamma, D) # exp sum log trick
         lp = logPhi[:,:,t+1]
         max_val = np.max(lp)
-        unnormalized_message = np.dot(np.exp(lp-max_val), m_bwd[:, t+1])
+        unnormalized_message = np.dot(np.exp(lp - max_val), m_bwd[:, t+1])
         m_bwd[:,t] = unnormalized_message / sum(unnormalized_message)
 
     p_1 = m_fwd * m_bwd # single node marginals unnormalized
@@ -199,8 +203,8 @@ def calcMargsAndLogZ(xl, theta, gamma, D):
         lp = logPhi[:,:,t+1]
         max_val = np.max(lp)
         # this is the unnormalized marginal on y_{t+1,t+2}
-        p_2[:,:,t] = np.exp(lp-max_val) * m_fwd[:,t].reshape(D, 1) \
-                                        * m_bwd[:,t+1].reshape(1, D)
+        p_2[:,:,t] = np.exp(lp - max_val) * m_fwd[:,t].reshape(D, 1) \
+                                          * m_bwd[:,t+1].reshape(1, D)
         p_2[:,:,t] = p_2[:,:,t] / p_2[:,:,t].sum() # normalized
 
     return p_1, p_2, logPartition
@@ -227,15 +231,13 @@ def learnParameters(x, y, K, D, lamb=1.0, theta_init=None, gamma_init=None,
     Args:
         x : an L length list of K x T(l) matrices of features.
         y : an L length list of T(l) length arrays of labels.
-        theta : D x D matrix of the theta parameters.
-        gamma : D x K matrix of the gamma parameters.
         K : the number of features.
         D : the number of latent labels.
         lamb : the L2 loss penalty.
         theta_init : the initial guess at the theta parameters. Defaults to
-            values sampled from a standard normal.
+            zeros.
         gamma_init : the initial guess at the gamma parameters. Defaults to
-            values sampled from a standard normal.
+            zeros.
         maxiter : the maximum number of iterations to run.
 
     Returns:
@@ -244,9 +246,9 @@ def learnParameters(x, y, K, D, lamb=1.0, theta_init=None, gamma_init=None,
     L = len(x)
 
     if theta_init is None:
-        theta_init = np.random.randn(D, D)
+        theta_init = np.zeros((D, D))
     if gamma_init is None:
-        gamma_init = np.random.randn(D, K)
+        gamma_init = np.zeros((D, K))
 
     # memos is a dict mapping (theta, gamma) -> [(p_1, p_2, logZ), ...]
     # When calcMarginals is called, it first checks whether the calculation has
@@ -277,16 +279,22 @@ def learnParameters(x, y, K, D, lamb=1.0, theta_init=None, gamma_init=None,
                          - 2 * lamb * vec)
 
     ll_per_iter = []
+    last_time = [time.clock()]
     def callback(vec):
         theta, gamma = vectorToParams(vec, K, D)
         ll = logLikelihood(x, y, theta, gamma, D, calcMarginals)
         ll_per_iter.append(ll)
+
+        now = time.clock()
         print 'Iter', len(ll_per_iter), '\t',
         print 'LL:', ll, '\t',
-        print 'Reg. Loss:', lamb * np.dot(vec, vec)
+        print 'L2 Loss:', lamb * np.sqrt(np.sum(np.power(vec, 2))), '\t',
+        print 'Time:', now - last_time[0]
 
         # Clear the memos dict, so we don't blow up memory.
         memos.clear()
+
+        last_time[0] = now
 
     opt_results = opt.fmin_l_bfgs_b(nll, paramsToVector(theta_init, gamma_init), ngrad,
                                     iprint=0, epsilon=1e-3, callback=callback,
@@ -294,11 +302,12 @@ def learnParameters(x, y, K, D, lamb=1.0, theta_init=None, gamma_init=None,
     return opt_results, ll_per_iter
 
 def learnSGD(x, y, K, D, lamb=1, theta_init=None, gamma_init=None, maxiter=500):
+    L = len(x)
     tol = 1e-2
-    batch_size = 1
+    batch_size = 10
 
     last_nll = None
-    step_size = 5 * 1e-7
+#     step_size = 5 * 1e-7
 
     if theta_init is None:
         theta_init = np.random.randn(D, D)
@@ -310,20 +319,64 @@ def learnSGD(x, y, K, D, lamb=1, theta_init=None, gamma_init=None, maxiter=500):
     for i in xrange(maxiter):
         batch_x, batch_y = zip(*sample(zip(x, y), batch_size))
 
-#        ix = choice(range(len(x)))
+        # memos is a dict mapping (theta, gamma) -> [(p_1, p_2, logZ), ...]
+        # When calcMarginals is called, it first checks whether the calculation has
+        # already been performed for the given theta, gamma parameters. If so, it
+        # returns the cached values. Otherwise, we calculate the marginals and log
+        # partition values over all sequences in parallel.
+        memos = {}
+        def calcMarginals(l, theta, gamma):
+            key = (hash(theta.tostring()), hash(gamma.tostring()))
+            if key in memos:
+                # print 'Cached!'
+                return memos[key][l]
+            else:
+                # print 'Missing'
+                # Calculate all in parallel
+                memos[key] = pool.map(_calcMargs,
+                                      zip(batch_x, [theta] * len(batch_x), [gamma] * len(batch_x), [D] * len(batch_x)))
+                return memos[key][l]
+
+        def nll(vec):
+            theta, gamma = vectorToParams(vec, K, D)
+            return (-1.0) * (logLikelihood(batch_x, batch_y, theta, gamma, D, calcMarginals)
+                             - lamb * np.dot(vec, vec))
+
+        def ngrad(vec):
+            theta, gamma = vectorToParams(vec, K, D)
+            return (-1.0) * (gradient(batch_x, batch_y, theta, gamma, K, D, calcMarginals)
+                             - 2 * lamb * vec)
+
+
+#         ix = choice(range(len(x)))
         vec = paramsToVector(theta, gamma)
-        nll = (-1.0) * (logLikelihood(batch_x, batch_y, theta, gamma, D) - lamb * np.dot(vec,vec))
-        grad = (-1.0) * (gradient(batch_x, batch_y, theta, gamma, K, D) - 2 * lamb * vec)
-        vec -= step_size * grad
+#         nll = (-1.0) * (logLikelihood(batch_x, batch_y, theta, gamma, D) - lamb * np.dot(vec,vec))
+#         grad = (-1.0) * (gradient(batch_x, batch_y, theta, gamma, K, D) - 2 * lamb * vec)
+        
+        grad = ngrad(vec)
+        prev_nll = nll(vec)
+        opt_result = opt.minimize_scalar(lambda alpha: nll(vec + alpha * grad))
+
+        alpha = opt_result.x
+
+#         alpha = ls_results[0]
+#         print ls_results
+#         if alpha is None:
+#             alpha = 1e-6
+
+        vec += alpha * grad
         theta, gamma = vectorToParams(vec, K, D)
 
-        print 'Iter', i, nll, step_size * np.sqrt(np.sum(np.power(grad, 2)))
+        new_nll = nll(vec)
+        print 'Iter', i, new_nll, alpha * np.sqrt(np.sum(np.power(grad, 2)))
 
-        if last_nll != None and np.abs(last_nll - nll) < tol:
+        if last_nll != None and np.abs(last_nll - new_nll) < tol:
             break
 
-        last_nll = nll
-        step_size *= 0.99
+        last_nll = new_nll
+
+        memos.clear()
+#         step_size *= 0.99
 
 def posteriorMAP(xl, theta, gamma, D):
     # xl is a K by T matrix of features
