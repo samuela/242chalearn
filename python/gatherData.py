@@ -119,27 +119,20 @@ def gatherRandomXY(fn, window_size, samples_per_file, onlyGesture=False):
 
     return X, Y
 
-def gatherAllXY(fn, window_size, onlyGesture=False):
-    data = loadFile(fn)
-#    pos = data['world_position']
-    pos = centerToHip(data['world_position'])
-    rot = data['world_rotation']
-    num_frames = data['num_frames']
-    labels = data['frame_labels']
+def gatherAllXY(fn, window_size, diff=False):
+    X, Y = gatherAllXYNoWindow(fn)
 
-    # Select only those indices corresponding to gestures.
-    if onlyGesture:
-        all_ixs = window_size + np.where(labels[window_size:num_frames - window_size] > 0)[0]
-    else:
-        all_ixs = window_size + np.where(labels[window_size:num_frames - window_size] >= 0)[0]
+    if diff:
+        X = np.diff(X, axis=0)
+        Y = Y[1:]
 
-    X, Y = [], []
-    for ix in all_ixs:
-        X.append(np.hstack((pos[ix - window_size:ix + window_size].ravel(),
-                            rot[ix - window_size:ix + window_size].ravel())))
-        Y.append(labels[ix])
+    shape = (X.shape[0] - window_size*2 + 1, X.shape[1] * window_size * 2)
+    x = np.lib.stride_tricks.as_strided(X, shape=shape, strides=X.strides)
+    y = Y[window_size - 1:Y.size - window_size]
 
-    return np.array(X), np.array(Y)
+#    print x.shape, len(y)
+
+    return x, y
 
 def gatherAllXYNoWindow(fn):
     data = loadFile(fn)

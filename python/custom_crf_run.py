@@ -27,23 +27,23 @@ train_data_files = glob(TRAIN_FILE_PATTERN)
 
 print '... Gathering data'
 
+# Diff version
 def _gather(fn):
-    return gatherAllXY(fn, window_size)
+    return gatherAllXY(fn, window_size, diff=True)
 
 pool = mp.Pool()
 train_data = pool.map(_gather, train_data_files)
 # valid_data = pool.map(_gather, validation_data_files)
 
-
-# train_xs, train_ys = zip(*[(x.T, y) for x, y in train_data])
-
-# Diff version
-train_xs, train_ys = zip(*[(np.diff(x.T), y[1:]) for x, y in train_data])
-
+train_xs, train_ys = zip(*[(x.T, y) for x, y in train_data])
 # valid_xs, valid_ys = zip(*[(x.T, y) for x, y in valid_data])
 
 del train_data
 # del valid_data
+
+# import resource
+# print resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 'Mb'
+
 
 K, _ = train_xs[0].shape
 D = len(allLabels)

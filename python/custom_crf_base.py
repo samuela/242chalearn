@@ -146,10 +146,11 @@ def logPhi(t, xl, theta, gamma, D):
     """
     if t == 1:
         return theta + np.dot(gamma, xl[:, 0]).reshape(D, 1) \
-                     + np.dot(gamma, xl[:,1]).reshape(1, D)
+                     + np.dot(gamma, xl[:, 1]).reshape(1, D)
     else:
         return theta + np.dot(gamma, xl[:, t]).reshape(1, D)
 
+# @profile
 def calcMargsAndLogZ(xl, theta, gamma, D):
     """Calculate the single/pair-node marginals and the log partition under the
     given model parameters. Requires that len(xl) > 1.
@@ -167,45 +168,53 @@ def calcMargsAndLogZ(xl, theta, gamma, D):
     _, T = xl.shape
 
     logPhi = theta.reshape(D, D, 1) + np.dot(gamma, xl).reshape(1, D, T)
-    logPhi[1] += np.dot(gamma, xl[:, 0]).reshape(D, 1)
+    logPhi[:,:,1] += np.dot(gamma, xl[:, 0]).reshape(D, 1)
+
+    logPhiMaxes = np.max(np.max(logPhi, axis=0), axis=0).reshape(1, 1, T)
+    logPhiExp = np.exp(logPhi - logPhiMaxes)
 
     m_fwd = np.ones([D, T]) # forward messages. First column is just ones
     # m_fwd[:,t] = m_{t,t+1}
-    logPartition = 0 # log partition function
+    logPartition = 0.0 # log partition function
     for t in xrange(1, T):
-        # lp = logPhi(t, xl, theta, gamma, D) # exp sum log trick
-        lp = logPhi[:,:,t]
-        max_val = np.max(lp)
-        unnormalized_message = np.dot(np.exp(lp - max_val).T, m_fwd[:, t-1])
-        sum_t = sum(unnormalized_message)
-        if sum_t == 0:
-            print lp
+#        lp = logPhi(t, xl, theta, gamma, D) # exp sum log trick
+#         lp = logPhi[:,:,t]
+#        max_val = np.max(lp)
+#        max_val = logPhiMaxes[t]
 
-        m_fwd[:,t] = unnormalized_message / sum_t
-        logPartition += np.log(sum_t) + max_val
+        unnorm_message = np.dot(logPhiExp[:,:,t].T, m_fwd[:, t-1])
+#        unnorm_message = np.dot(np.exp(lp - max_val).T, m_fwd[:, t-1])
+        sum_t = np.sum(unnorm_message)
+        m_fwd[:,t] = unnorm_message / sum_t
+        logPartition += np.log(sum_t) + logPhiMaxes[:,:,t]
+#        logPartition += np.log(sum_t) + max_val
 
     m_bwd = np.ones([D, T]) # backward messages. Last column is just ones
     # m_bwd[:,t] = m_{t+2,t+1}
     for t in xrange(T - 2, -1, -1): #T-2,T-3,...,0
-        # lp = logPhi(t+1, xl, theta, gamma, D) # exp sum log trick
-        lp = logPhi[:,:,t+1]
-        max_val = np.max(lp)
-        unnormalized_message = np.dot(np.exp(lp - max_val), m_bwd[:, t+1])
-        m_bwd[:,t] = unnormalized_message / sum(unnormalized_message)
+#        lp = logPhi(t+1, xl, theta, gamma, D) # exp sum log trick
+#        lp = logPhi[:,:,t+1]
+#        max_val = np.max(lp)
+#        max_val = logPhiMaxes[t + 1]
+        unnorm_message = np.dot(logPhiExp[:,:,t+1], m_bwd[:, t+1])
+#        unnorm_message = np.dot(np.exp(lp - max_val), m_bwd[:, t+1])
+        m_bwd[:,t] = unnorm_message / np.sum(unnorm_message)
 
     p_1 = m_fwd * m_bwd # single node marginals unnormalized
-    p_1 = p_1 / p_1.sum(axis=0) # normalized
+    p_1 /= p_1.sum(axis=0) # normalized
+#    p_1 = p_1 / p_1.sum(axis=0) # normalized
 
     #now pairwise marginals
     p_2 = np.zeros([D, D, T - 1])
     for t in xrange(T - 1):
-        # lp = logPhi(t + 1, xl, theta, gamma, D) # exp sum log trick
-        lp = logPhi[:,:,t+1]
-        max_val = np.max(lp)
+#        lp = logPhi(t + 1, xl, theta, gamma, D) # exp sum log trick
+#        lp = logPhi[:,:,t+1]
+#        max_val = np.max(lp)
+#        max_val = logPhiMaxes[t + 1]
         # this is the unnormalized marginal on y_{t+1,t+2}
-        p_2[:,:,t] = np.exp(lp - max_val) * m_fwd[:,t].reshape(D, 1) \
-                                          * m_bwd[:,t+1].reshape(1, D)
-        p_2[:,:,t] = p_2[:,:,t] / p_2[:,:,t].sum() # normalized
+        p_2[:,:,t] = logPhiExp[:,:,t+1] * m_fwd[:,t].reshape(D, 1) \
+                                        * m_bwd[:,t+1].reshape(1, D)
+        p_2[:,:,t] = p_2[:,:,t] / np.sum(p_2[:,:,t]) # normalized
 
     return p_1, p_2, logPartition
 
@@ -263,9 +272,14 @@ def learnParameters(x, y, K, D, lamb=1.0, theta_init=None, gamma_init=None,
             return memos[key][l]
         else:
             # print 'Missing'
+
+            # Clear the memos dict, so we don't blow up memory.
+            memos.clear()
+
             # Calculate all in parallel
             memos[key] = pool.map(_calcMargs,
                                   zip(x, [theta] * L, [gamma] * L, [D] * L))
+
             return memos[key][l]
 
     def nll(vec):
@@ -296,12 +310,16 @@ def learnParameters(x, y, K, D, lamb=1.0, theta_init=None, gamma_init=None,
 
         last_time[0] = now
 
+        import resource
+        print resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 'Mb'
+
+
     opt_results = opt.fmin_l_bfgs_b(nll, paramsToVector(theta_init, gamma_init), ngrad,
                                     iprint=0, epsilon=1e-3, callback=callback,
                                     maxiter=maxiter)
     return opt_results, ll_per_iter
 
-def learnSGD(x, y, K, D, lamb=1, theta_init=None, gamma_init=None, maxiter=500):
+def learnSGD(x, y, K, D, lamb=1.0, theta_init=None, gamma_init=None, maxiter=500):
     L = len(x)
     tol = 1e-2
     batch_size = 10
@@ -310,62 +328,16 @@ def learnSGD(x, y, K, D, lamb=1, theta_init=None, gamma_init=None, maxiter=500):
 #     step_size = 5 * 1e-7
 
     if theta_init is None:
-        theta_init = np.random.randn(D, D)
+        theta_init = np.zeros((D, D))
     if gamma_init is None:
-        gamma_init = np.random.randn(D, K)
+        gamma_init = np.zeros((D, K))
 
     theta, gamma = theta_init, gamma_init
 
     for i in xrange(maxiter):
         batch_x, batch_y = zip(*sample(zip(x, y), batch_size))
 
-        # memos is a dict mapping (theta, gamma) -> [(p_1, p_2, logZ), ...]
-        # When calcMarginals is called, it first checks whether the calculation has
-        # already been performed for the given theta, gamma parameters. If so, it
-        # returns the cached values. Otherwise, we calculate the marginals and log
-        # partition values over all sequences in parallel.
-        memos = {}
-        def calcMarginals(l, theta, gamma):
-            key = (hash(theta.tostring()), hash(gamma.tostring()))
-            if key in memos:
-                # print 'Cached!'
-                return memos[key][l]
-            else:
-                # print 'Missing'
-                # Calculate all in parallel
-                memos[key] = pool.map(_calcMargs,
-                                      zip(batch_x, [theta] * len(batch_x), [gamma] * len(batch_x), [D] * len(batch_x)))
-                return memos[key][l]
-
-        def nll(vec):
-            theta, gamma = vectorToParams(vec, K, D)
-            return (-1.0) * (logLikelihood(batch_x, batch_y, theta, gamma, D, calcMarginals)
-                             - lamb * np.dot(vec, vec))
-
-        def ngrad(vec):
-            theta, gamma = vectorToParams(vec, K, D)
-            return (-1.0) * (gradient(batch_x, batch_y, theta, gamma, K, D, calcMarginals)
-                             - 2 * lamb * vec)
-
-
-#         ix = choice(range(len(x)))
-        vec = paramsToVector(theta, gamma)
-#         nll = (-1.0) * (logLikelihood(batch_x, batch_y, theta, gamma, D) - lamb * np.dot(vec,vec))
-#         grad = (-1.0) * (gradient(batch_x, batch_y, theta, gamma, K, D) - 2 * lamb * vec)
-        
-        grad = ngrad(vec)
-        prev_nll = nll(vec)
-        opt_result = opt.minimize_scalar(lambda alpha: nll(vec + alpha * grad))
-
-        alpha = opt_result.x
-
-#         alpha = ls_results[0]
-#         print ls_results
-#         if alpha is None:
-#             alpha = 1e-6
-
-        vec += alpha * grad
-        theta, gamma = vectorToParams(vec, K, D)
+        opt_results, _ = learnParameters(x, y, K, D, lamb=lamb, theta_init=theta, gamma_init=gamma, maxiter=1)
 
         new_nll = nll(vec)
         print 'Iter', i, new_nll, alpha * np.sqrt(np.sum(np.power(grad, 2)))
@@ -374,9 +346,6 @@ def learnSGD(x, y, K, D, lamb=1, theta_init=None, gamma_init=None, maxiter=500):
             break
 
         last_nll = new_nll
-
-        memos.clear()
-#         step_size *= 0.99
 
 def posteriorMAP(xl, theta, gamma, D):
     # xl is a K by T matrix of features

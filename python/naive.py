@@ -15,7 +15,7 @@ import multiprocessing as mp
 import os
 
 train_num_files = 200
-samples_per_file = 250
+samples_per_file = 10
 train_data_files = random.sample(glob(TRAIN_FILE_PATTERN), train_num_files)
 
 validation_num_files = 200
@@ -28,7 +28,7 @@ window_size = 15
 print '... Gathering data'
 
 def _gather(fn):
-    return gatherRandomXY(fn, window_size, samples_per_file, onlyGesture=False)
+    return gatherRandomXY(fn, window_size, samples_per_file, onlyGesture=True)
 
 pool = mp.Pool()
 train_data = pool.map(_gather, train_data_files)
@@ -46,7 +46,7 @@ print Xtrain.shape, len(Ytrain)
 # Xtrain, Xtest, Ytrain, Ytest = train_test_split(X, Y, test_size=0.25)
 # del X, Y
 
-results_dir = 'results/naive_train_%d_validation_%d_windowsize_%d/' % (train_num_files, validation_num_files, window_size)
+results_dir = 'results/naive_train_%d_samplesperfile_%d_validation_%d_windowsize_%d/' % (train_num_files, samples_per_file, validation_num_files, window_size)
 
 if not os.path.exists(results_dir):
     os.makedirs(results_dir)
@@ -68,10 +68,10 @@ def showConfusionMatrix(cm, title, show=True, outfile=None):
     if show:
         plt.show()
 
-# print '... Training SVM'
-# svm_clf, svm_score, svm_cm = testClassifier(svm.SVC())
-# print svm_score
-# showConfusionMatrix(svm_cm, 'RBF SVM', outfile='results/svm_confusion_matrix.png')
+print '... Training SVM'
+svm_clf, svm_score, svm_cm = testClassifier(svm.SVC())
+print svm_score
+showConfusionMatrix(svm_cm, 'RBF SVM', show=False, outfile=results_dir + 'svm.png')
 
 print '... Training Logistic Regression'
 # lr_clf = LogisticRegression(penalty='l2').fit(Xtrain, Ytrain)

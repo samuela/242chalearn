@@ -72,6 +72,9 @@ brute_ll = brute_logLike(x,y,theta,gamma)
 dp_ll = logLikelihood(x,y,theta,gamma,D)
 print "log likelihood ", np.abs(dp_ll - brute_ll)
 
+import sys
+sys.exit(0)
+
 # Learn some parameters
 K = 10
 D = 10
@@ -86,7 +89,7 @@ print learned_theta, "\n"
 print learned_gamma
 
 # Test posteriorMAP
-for _ in range(100):
+for _ in range(10):
     K = 5
     D = 5
     T = 5
