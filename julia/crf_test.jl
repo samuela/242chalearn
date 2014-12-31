@@ -17,10 +17,6 @@ function _brute_unnorm_logprob(xl, yl, θ, γ)
     logprob
 end
 
-function _brute_logZ(xl, θ, γ, K)
-
-end
-
 function test_calc_margs_and_logZ(Ntests = 50)
     function _brute(xl::AbstractMatrix, θ::AbstractMatrix, γ::AbstractMatrix, D::Int, K::Int)
         Tl = size(xl, 2)
@@ -68,14 +64,33 @@ function test_calc_margs_and_logZ(Ntests = 50)
     end
 end
 
+random_data(L, T, K, D) = [(randn(K, T), rand(1:D, T)) for _ in 1:L]
+
 function test_suffstats()
+    L = 25
     K = rand(5:10)
     D = rand(2:5)
     T = rand(3:5)
-    xl = randn(K, T)
-    yl = rand(1:D, T)
 
-    suffstats(Array[xl], Array[yl], K, D)
+    data = random_data(L, T, K, D)
+    suffstats(data, K, D)
+end
+
+function time_loglikelihood()
+    L = 25
+    T = 1000
+    K = 4000
+    D = 20
+    θ = randn(D, D)
+    γ = randn(D, K)
+
+    for _ = 1:25
+        data = random_data(L, T, K, D)
+        margs = map((dat) -> calc_margs_and_logZ(dat[1], θ, γ, D), data)
+        
+        @time loglikelihood(data, θ, γ, D; _margs = margs)
+        println()
+    end
 end
 
 test_calc_margs_and_logZ()

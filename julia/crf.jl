@@ -1,6 +1,17 @@
 module LinearChainCRF
 
-export suffstats, calc_margs_and_logZ
+using Optim
+import ArrayViews.getindex
+
+export
+    calc_margs_and_logZ,
+    suffstats,
+    expectedstats,
+    loglikelihood,
+    gradient,
+    params_to_vector,
+    vector_to_params,
+    get_optim_func
 
 # include("loaddata.jl")
 
@@ -44,52 +55,80 @@ function calc_margs_and_logZ(xl::AbstractMatrix, θ::AbstractMatrix, γ::Abstrac
     p_1, p_2, logZ
 end
 
-function suffstats(x, y, K::Int, D::Int)
-    L = length(x)
+function suffstats(data, K::Int, D::Int)
+#    L = length(x)
     θ_ss = zeros(D, D)
     γ_ss = zeros(D, K)
-    for l = 1:L
-        ymat = 1.0 * hcat([y[l] .== i for i = 1:D]...)
-        θ_ss += ymat[:,1:(end-1)] * ymat[:,2:end]'
-        γ_ss += ymat * x[l]'
+    for (xl, yl) = data
+        ymat = hcat([yl .== i for i = 1:D]...)
+        θ_ss += ymat[1:(end-1),:]' * ymat[2:end,:]
+        γ_ss += (xl * ymat)'
     end
     θ_ss, γ_ss
 end
 
-function expectedstats(x, θ, γ, K::Int, D::Int, _margs = Dict())
-    L = length(x)
+function expectedstats(data, θ, γ, K::Int, D::Int; _margs = [])
+#    println("expectedstats")
     θ_es = zeros(D, D)
     γ_es = zeros(D, K)
-    for l = 1:L
-        p_1, p_2, _ = get(() -> calc_margs_and_logZ(x[l], θ, γ, D), _margs, l)
-        θ_es += p_1 * x[l]'
-        γ_es += sum(p_2, 3)
+    for (l, (xl, _)) = enumerate(data)
+        p_1, p_2, _ = if length(_margs) > 0
+            _margs[l]
+        else
+#            println("expectedstats: recalc margs")
+            calc_margs_and_logZ(xl, θ, γ, D)
+        end
+        θ_es += sum(p_2, 3)
+        γ_es += p_1 * xl'
     end
+#    println("done expectedstats")
     θ_es, γ_es
 end
 
-function loglikelihood(x, y, θ, γ, D, _margs = Dict())
-    L = length(x)
-    ll = 0.0
-    for l = 1:L
-        ymat = 1.0 * hcat([y[l] .== i for i = 1:D]...)
-        n_ij = ymat[:,1:(end-1)] * ymat[:,2:end]'
-        θ_term = sum(θ .* n_ij)
-        γ_term = sum((ymat * x[l]') .* γ)
-        _, _, logZ = get(() -> calc_margs_and_logZ(x[l], θ, γ, D), _margs, l)
-        ll += θ_term + γ_term - logZ
+function logprob(xl, yl, θ, γ, D; _logZ = -1.0)
+    K, Tl = size(xl)
+    
+    θ_term :: Float64 = 0.0
+    for t = 2:Tl
+        θ_term += θ[yl[t-1], yl[t]]
     end
-    ll
+    
+    γ_term :: Float64 = 0.0
+    for t = 1:Tl, k = 1:K
+        γ_term += γ[yl[t],k] * xl[k,t]
+    end
+
+    logZ = if _logZ >= 0.0
+        _logZ
+    else
+        calc_margs_and_logZ(xl, θ, γ, D)[3]
+    end
+    
+    θ_term + γ_term - logZ
 end
 
-function gradient(x, y, θ, γ, K, D, _suffstats = (), _margs = Dict())
+function loglikelihood(data, θ, γ, D; _margs = [])
+    if length(_margs) > 0
+        sum(map(enumerate(data)) do el
+            (l, (xl, yl)) = el
+            logprob(xl, yl, θ, γ, D; _logZ = _margs[l][3])
+        end)
+    else
+        sum(map(enumerate(data)) do el
+            (l, (xl, yl)) = el
+            logprob(xl, yl, θ, γ, D)
+        end)
+    end
+end
+
+function ll_gradient(data, θ, γ, K, D; _suffstats = (), _margs = [])
     θ_ss, γ_ss = if length(_suffstats) > 0
         _suffstats
     else
-        suffstats(x, y, K, D)
+        suffstats(data, K, D)
     end
 
-    θ_ss, γ_es = expectedstats(x, θ, γ, K, D, _margs)
+    θ_es, γ_es = expectedstats(data, θ, γ, K, D; _margs = _margs)
     return θ_ss - θ_es, γ_ss - γ_es
 end
 
@@ -101,28 +140,38 @@ function vector_to_params(vec, K, D)
     θ, γ
 end
 
-function get_optim_func(x, y, K, D)
-    ss = suffstats(x, y, K, D)
+function get_optim_func(data, K, D, λ)
+    L = length(data)
+    ss = suffstats(data, K, D)
     
+    # TODO fix nll, grad!
     function nll(vec::Vector)
+#        println("nll")
         θ, γ = vector_to_params(vec, K, D)
         margs = {l => calc_margs_and_logZ(x[l], θ, γ, D) for l = 1:L}
         return -1.0 * loglikelihood(x, y, θ, γ, D, _margs = margs)
     end
 
     function grad!(vec::Vector, grad_storage)
+#        println("grad!")
         θ, γ = vector_to_params(vec, K, D)
         margs = {l => calc_margs_and_logZ(x[l], θ, γ, D) for l = 1:L}
-        θ_grad, γ_grad = gradient(x, y, θ, γ, K, D, _suffstats = ss, _margs = margs)
+        θ_grad, γ_grad = ll_gradient(x, y, θ, γ, K, D, _suffstats = ss, _margs = margs)
         copy!(grad_storage, -1.0 * params_to_vector(θ_grad, γ_grad))
     end
 
     function nll_and_grad!(vec::Vector, grad_storage)
+#        println("nll_and_grad! $(myid())")
         θ, γ = vector_to_params(vec, K, D)
-        margs = {l => calc_margs_and_logZ(x[l], θ, γ, D) for l = 1:L}
-        θ_grad, γ_grad = gradient(x, y, θ, γ, K, D, _suffstats = ss, _margs = margs)
-        copy!(grad_storage, -1.0 * params_to_vector(θ_grad, γ_grad))
-        return -1.0 * loglikelihood(x, y, θ, γ, D, _margs = margs)
+#        margs = {l => calc_margs_and_logZ(x[l], θ, γ, D) for l = 1:L}
+#        margs = Dict(pmap((l) -> (l, calc_margs_and_logZ(x[l], θ, γ, D)), 1:L))
+        margs = map((dat) -> calc_margs_and_logZ(dat[1], θ, γ, D), data)
+
+        θ_grad, γ_grad = ll_gradient(data, θ, γ, K, D; _suffstats = ss, _margs = margs)
+        grad = params_to_vector(θ_grad, γ_grad)
+        copy!(grad_storage, -1.0 * (grad - 2 * λ * vec))
+
+        return -1.0 * (loglikelihood(data, θ, γ, D; _margs = margs) - λ * sum(vec .^ 2))
     end
     
     return DifferentiableFunction(nll, grad!, nll_and_grad!)
