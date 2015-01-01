@@ -64,16 +64,55 @@ function test_calc_margs_and_logZ(Ntests = 50)
     end
 end
 
-random_data(L, T, K, D) = [(randn(K, T), rand(1:D, T)) for _ in 1:L]
+random_data(L, T, K, D) = [Sequence(randn(K, T), rand(1:D, T)) for _ in 1:L]
 
 function test_suffstats()
-    L = 25
-    K = rand(5:10)
-    D = rand(2:5)
-    T = rand(3:5)
+    function suffstats_alt1(data :: AbstractVector{Sequence}, K::Int, D::Int)
+        θ_ss = zeros(D, D)
+        γ_ss = zeros(D, K)
+        for seq = data
+            xl, yl = (seq.xl, seq.yl)
+            ymat = hcat([yl .== i for i = 1:D]...)
+            θ_ss += ymat[1:(end-1),:]' * ymat[2:end,:]
+            γ_ss += (xl * ymat)'
+        end
+        θ_ss, γ_ss
+    end
 
-    data = random_data(L, T, K, D)
-    suffstats(data, K, D)
+    function suffstats_alt2(data :: AbstractVector{Sequence}, K::Int, D::Int)
+        θ_ss = zeros(D, D)
+        γ_ss = zeros(D, K)
+        for seq = data
+            xl, yl = (seq.xl, seq.yl)
+            Tl = size(xl, 2)
+            for t = 2:Tl
+                θ_ss[yl[t-1],yl[t]] += 1
+            end
+
+            for k = 1:K, t = 1:Tl
+                γ_ss[yl[t],k] += xl[k,t]
+            end
+        end
+        θ_ss, γ_ss
+    end
+
+    for _ = 1:25
+        L = 25
+        K = rand(5:10)
+        D = rand(2:5)
+        T = rand(3:100)
+        
+        data = random_data(L, T, K, D)
+        θ_ss, γ_ss = suffstats(data, K, D)
+        θ_ss_alt1, γ_ss_alt1 = suffstats_alt1(data, K, D)
+        θ_ss_alt2, γ_ss_alt2 = suffstats_alt2(data, K, D)
+        
+        @test_approx_eq θ_ss θ_ss_alt1
+        @test_approx_eq γ_ss γ_ss_alt1
+
+        @test_approx_eq θ_ss θ_ss_alt2
+        @test_approx_eq γ_ss γ_ss_alt2
+    end
 end
 
 function time_loglikelihood()
